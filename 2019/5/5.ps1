@@ -1,4 +1,15 @@
 
+# ABCDE
+#  1002
+
+# DE - two-digit opcode,      02 == opcode 2
+#  C - mode of 1st parameter,  0 == position mode
+#  B - mode of 2nd parameter,  1 == immediate mode
+#  A - mode of 3rd parameter,  0 == position mode,
+#                                   omitted due to being a leading zero
+
+# to run: 
+# Get-Content .\day2in.txt | Resolve-OpCodes
 function Run-OpCodes
 {
     param(
@@ -287,20 +298,4 @@ function Run-OpCodes
         }
     }
     return "Output: $Output"
-}
-
-function Run-Part1
-{
-    [CmdletBinding()]
-    param(
-        [string] $InFilename
-    )
-}
-
-function Run-Part2
-{
-    [CmdletBinding()]
-    param(
-        [string] $InFilename
-    )
 }
