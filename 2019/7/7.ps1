@@ -1,20 +1,38 @@
 
+class ProgramState {
+    [string[]] $codes
+    [int] $PC
+    [int[]] $InBuff
+    [int[]] $OutBuff
+    [int] $exitCode
+    [bool] $isHalted
+
+    ProgramState([string[]] $codes, [int] $PC, [int[]] $InBuff, [int[]] $OutBuff, [int] $exitCode) {
+        $this.codes = $codes
+        $this.PC = $PC
+        $this.InBuff = $InBuff
+        $this.OutBuff = $OutBuff
+        $this.exitCode = $exitCode
+        $this.isHalted = $false
+    }
+}
+
 function Run-OpCodes
 {
     param(
-        [string] $CsvCodes,
-        [int] $Setting,
-        [int] $In
+        [ProgramState] $state
     )
+    if($state.isHalted) {
+        return $state
+    }
 
-    $codes = $CsvCodes.split(',')
-    $inputIndex = 0;
-
-    for($i = 0; $i -lt $codes.Length;)
+    $inIndex = 0;
+    $outBuff = @()
+    for($i = $state.PC; $i -lt $state.codes.Length;)
     {
         Write-Verbose "i = $i"
         # Resolve op code
-        $codeRaw = $codes[$i]
+        $codeRaw = $state.codes[$i]
         $codeStr = "{0:00000}" -f [int]$codeRaw
         $opcode = [int] $codeStr.Substring(3,2)
         $param1Mode = [int] $codeStr.Substring(2,1)
@@ -25,35 +43,35 @@ function Run-OpCodes
             # add
             1 {
                 Write-Verbose "Opcode: 1"
-                $i1 = [int]$codes[$i + 1]
+                $i1 = [int]$state.codes[$i + 1]
                 if($param1Mode -eq 0) {
-                    $param1 = [int]$codes[$i1]
+                    $param1 = [int]$state.codes[$i1]
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i2 = [int]$codes[$i + 2]
+                $i2 = [int]$state.codes[$i + 2]
                 if($param2Mode -eq 0) {
-                    $param2 = [int]$codes[$i2]
+                    $param2 = [int]$state.codes[$i2]
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i3 = [int]$codes[$i + 3]
+                $i3 = [int]$state.codes[$i + 3]
                 if($param3Mode -eq 1) {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
 
                 $result = [int]( $param1 + $param2)
-                $codes[$i3] = $result
+                $state.codes[$i3] = $result
                 Write-Verbose "$param1 + $param2 = $result, store at index $i3"
 
                 $i += 4
@@ -62,35 +80,35 @@ function Run-OpCodes
             # multiply
             2 {
                 Write-Verbose "Opcode: 2"
-                $i1 = [int]$codes[$i + 1]
+                $i1 = [int]$state.codes[$i + 1]
                 if($param1Mode -eq 0) {
-                    $param1 = [int]$codes[$i1]
+                    $param1 = [int]$state.codes[$i1]
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i2 = [int]$codes[$i + 2]
+                $i2 = [int]$state.codes[$i + 2]
                 if($param2Mode -eq 0) {
-                    $param2 = [int]$codes[$i2]
+                    $param2 = [int]$state.codes[$i2]
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i3 = [int]$codes[$i + 3]
+                $i3 = [int]$state.codes[$i + 3]
                 if($param3Mode -eq 1) {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
 
                 $result = [int]( $param1 * $param2)
-                $codes[$i3] = $result
+                $state.codes[$i3] = $result
                 Write-Verbose "$param1 * $param2 = $result, store at index $i3"
 
                 $i += 4
@@ -99,27 +117,25 @@ function Run-OpCodes
             # input
             3 {
                 Write-Verbose "Opcode: 3"
-                $i1 = [int]$codes[$i + 1]
+                $i1 = [int]$state.codes[$i + 1]
                 if($param1Mode -eq 0) {
-                    $param1 = [int]$codes[$i1]
+                    $param1 = [int]$state.codes[$i1]
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1])]"
                 }
 
-                if($inputIndex -eq 0) {
-                    $codes[$i1] = $Setting
-                    Write-Verbose "store setting $setting at index $i1"
-                    $inputIndex++
-
-                }
-                elseif($inputIndex -eq 1) {
-                    $codes[$i1] = $In
-                    Write-Verbose "store setting $In at index $i1"
-                    $inputIndex++
+                if($inIndex -lt $state.InBuff.Length) {
+                    $state.codes[$i1] = $state.InBuff[$inIndex]
+                    Write-Verbose "store setting $($state.InBuff) at index $i1"
+                    $inIndex++
                 }
                 else {
-                   throw "too many inputs $inputIndex"
+                    Write-Verbose "ran out of arguments, returning"
+                    $state.exitCode = 0
+                    $state.InBuff = @()
+                    $state.PC = $i
+                    return $state
                 }
 
                 $i += 2
@@ -128,19 +144,19 @@ function Run-OpCodes
             # output
             4 {
                 Write-Verbose "Opcode: 4"
-                $i1 = [int]$codes[$i + 1]
+                $i1 = [int]$state.codes[$i + 1]
                 if($param1Mode -eq 0) {
-                    $param1 = [int]$codes[$i1]
+                    $param1 = [int]$state.codes[$i1]
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1])"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1])"
                 }
 
-                $Output = [int]( $param1 )
-                Write-Verbose "store output $Output"
+                Write-Verbose "store output $param1"
+                $state.OutBuff += [int]( $param1 )
 
                 $i += 2
                 break
@@ -148,26 +164,26 @@ function Run-OpCodes
             # jump if true
             5 {
                 Write-Verbose "Opcode: 5"
-                $i1 = [int]$codes[$i + 1]
+                $i1 = [int]$state.codes[$i + 1]
                 if($param1Mode -eq 0) {
-                    $param1 = [int]$codes[$i1]
+                    $param1 = [int]$state.codes[$i1]
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i2 = [int]$codes[$i + 2]
+                $i2 = [int]$state.codes[$i + 2]
                 if($param2Mode -eq 0) {
-                    $param2 = [int]$codes[$i2]
+                    $param2 = [int]$state.codes[$i2]
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
 
                 if(([int]$param1) -ne 0) {
@@ -184,26 +200,26 @@ function Run-OpCodes
             # jump if false
             6 {
                 Write-Verbose "Opcode: 6"
-                $i1 = [int]$codes[$i + 1]
+                $i1 = [int]$state.codes[$i + 1]
                 if($param1Mode -eq 0) {
-                    $param1 = [int]$codes[$i1]
+                    $param1 = [int]$state.codes[$i1]
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i2 = [int]$codes[$i + 2]
+                $i2 = [int]$state.codes[$i + 2]
                 if($param2Mode -eq 0) {
-                    $param2 = [int]$codes[$i2]
+                    $param2 = [int]$state.codes[$i2]
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
 
                 if(([int]$param1) -eq 0) {
@@ -220,34 +236,34 @@ function Run-OpCodes
             # less than
             7 {
                 Write-Verbose "Opcode: 7"
-                $i1 = [int]$codes[$i + 1]
+                $i1 = [int]$state.codes[$i + 1]
                 if($param1Mode -eq 0) {
-                    $param1 = [int]$codes[$i1]
+                    $param1 = [int]$state.codes[$i1]
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i2 = [int]$codes[$i + 2]
+                $i2 = [int]$state.codes[$i + 2]
                 if($param2Mode -eq 0) {
-                    $param2 = [int]$codes[$i2]
+                    $param2 = [int]$state.codes[$i2]
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i3 = [int]$codes[$i + 3]
+                $i3 = [int]$state.codes[$i + 3]
                 if($param3Mode -eq 1) {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
 
-                $codes[$i3] = [int]( $param1 -lt $param2 )
+                $state.codes[$i3] = [int]( $param1 -lt $param2 )
 
                 $i += 4
                 break
@@ -255,35 +271,35 @@ function Run-OpCodes
             # equal to
             8 {
                 Write-Verbose "Opcode: 8"
-                $i1 = [int]$codes[$i + 1]
+                $i1 = [int]$state.codes[$i + 1]
                 if($param1Mode -eq 0) {
-                    $param1 = [int]$codes[$i1]
+                    $param1 = [int]$state.codes[$i1]
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i2 = [int]$codes[$i + 2]
+                $i2 = [int]$state.codes[$i + 2]
                 if($param2Mode -eq 0) {
-                    $param2 = [int]$codes[$i2]
+                    $param2 = [int]$state.codes[$i2]
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
                 
-                $i3 = [int]$codes[$i + 3]
+                $i3 = [int]$state.codes[$i + 3]
                 if($param3Mode -eq 1) {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($codes[$i+1]), $($codes[$i+2]), $($codes[$i+2])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+2])]"
                 }
 
                 $result = [int]( $param1 -eq $param2 )
-                $codes[$i3] = $result
+                $state.codes[$i3] = $result
                 Write-Verbose "$param1 -lt $param2 = $result, store at index $i3"
 
                 $i += 4
@@ -292,7 +308,11 @@ function Run-OpCodes
             # exit
             99 {
                 Write-Verbose "Opcode: 99"
-                return $Output
+                $state.exitCode = 99
+                $state.InBuff = @($state.InBuff[$inIndex..($state.InBuff.Length-1)])
+                $state.PC = $i
+                $state.isHalted = $true
+                return $state
                 break
             }
             Default {
@@ -300,7 +320,11 @@ function Run-OpCodes
             }
         }
     }
-    return $Output
+    $state.exitCode = 2
+    $state.InBuff = @($state.InBuff[$inIndex..($state.InBuff.Length-1)])
+    $state.PC = $i
+    $state.isHalted = $true
+    return $state
 }
 
 function Run-Amps
@@ -310,14 +334,48 @@ function Run-Amps
         [int[]] $Settings,
         [int] $In
     )
+
+    $stateA = [ProgramState]::New($CsvCodes.split(','), 0, @($Settings[0], $In), @(), 0)
+    $stateB = [ProgramState]::New($CsvCodes.split(','), 0, @($Settings[1]), @(), 0)
+    $stateC = [ProgramState]::New($CsvCodes.split(','), 0, @($Settings[2]), @(), 0)
+    $stateD = [ProgramState]::New($CsvCodes.split(','), 0, @($Settings[3]), @(), 0)
+    $stateE = [ProgramState]::New($CsvCodes.split(','), 0, @($Settings[4]), @(), 0)
+
+    $allHalted = $false
+    while(!$allHalted){
+        $stateA = Run-OpCodes -state $stateA
+        $stateB.InBuff += $stateA.outBuff
+        Write-Verbose "outA $($stateA.outBuff)"
+        $stateA.outBuff = @()
+        
+        $stateB = Run-OpCodes -state $stateB
+        $stateC.InBuff += $stateB.outBuff
+        Write-Verbose "outB $($stateB.outBuff)"
+        $stateB.outBuff = @()
+        
+        $stateC = Run-OpCodes -state $stateC
+        $stateD.InBuff += $stateC.outBuff
+        Write-Verbose "outC $($stateC.outBuff)"
+        $stateC.outBuff = @()
+        
+        $stateD = Run-OpCodes -state $stateD
+        $stateE.InBuff += $stateD.outBuff
+        Write-Verbose "outD $($stateD.outBuff)"
+        $stateD.outBuff = @()
+        
+        $stateE = Run-OpCodes -state $stateE
+        $stateA.InBuff += $stateE.outBuff
+        Write-Verbose "outE $($stateE.outBuff)"
+        $output = $stateE.OutBuff
+        $stateE.outBuff = @()
+
+        if($stateA.isHalted -and $stateB.isHalted -and $stateC.isHalted -and $stateD.isHalted -and $stateE.isHalted) {
+            $allHalted = $true
+        }
+        Write-Verbose "output $output"
+    }
     
-    $aOut = Run-OpCodes -CsvCodes $content -Setting $Settings[0] -In $In
-    $bOut = Run-OpCodes -CsvCodes $content -Setting $Settings[1] -In $aOut
-    $cOut = Run-OpCodes -CsvCodes $content -Setting $Settings[2] -In $bOut
-    $dOut = Run-OpCodes -CsvCodes $content -Setting $Settings[3] -In $cOut
-    $eOut = Run-OpCodes -CsvCodes $content -Setting $Settings[4] -In $dOut
-    
-    return $eOut
+    return $output
 }
 
 function Run-Part1
@@ -330,8 +388,8 @@ function Run-Part1
 
     $content = (Get-Content $InFilename)
 
-    $minInput = 0
-    $maxInput = 5
+    $minInput = 5
+    $maxInput = 10
     $maxOutput = -1
 
     for ($a = $minInput; $a -lt $maxInput; $a++) {
@@ -339,16 +397,20 @@ function Run-Part1
             for ($c = $minInput; $c -lt $maxInput; $c++) {
                 for ($d = $minInput; $d -lt $maxInput; $d++) {
                     for ($e = $minInput; $e -lt $maxInput; $e++) {
-                        $settings = @($a, $b, $c, $d, $e)
-                        if($settings.Contains(0) -and $settings.Contains(1) -and $settings.Contains(2) -and $settings.Contains(3) -and $settings.Contains(4)){
+                        $Settings = @($a, $b, $c, $d, $e)
+                        if($Settings.Contains(5) -and $Settings.Contains(6) -and $Settings.Contains(7) -and $Settings.Contains(8) -and $Settings.Contains(9)){
                             
-                            $out = [int](Run-Amps -CsvCodes $content -Settings $settings -In $In)
+                            $out = @(Run-Amps -CsvCodes $content -Settings $Settings -In $In)
+                            if($out.Length -gt 1) {
+                                throw "output too long $out"
+                            }
+                            $out = [int]$out[0]
 
                             if(($maxOutput -lt 0) -or ($out -gt $maxOutput)) {
                                 $maxOutput = $out
-                                $maxSettings = "$settings"
+                                $maxSettings = "$Settings"
                             }
-                            Write-Host "maxSettings: $maxSettings, maxOutput: $maxOutput, settings: $settings output: $out"
+                            Write-Host "maxSettings: $maxSettings, maxOutput: $maxOutput, settings: $Settings output: $out"
                         }
                     }
                 }
