@@ -3,10 +3,11 @@ function Run-OpCodes
 {
     param(
         [string] $CsvCodes,
-        [int] $In
+        [int[]] $In
     )
 
     $codes = $CsvCodes.split(',')
+    $inputIndex = 0;
 
     for($i = 0; $i -lt $codes.Length;)
     {
@@ -105,8 +106,9 @@ function Run-OpCodes
                     throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1])]"
                 }
 
-                $codes[$i1] = [int]( $In )
+                $codes[$i1] = [int]( $In[$inputIndex] )
                 Write-Host "store input $In at index $i1"
+                $inputIndex++
 
                 $i += 2
                 break
@@ -126,7 +128,7 @@ function Run-OpCodes
                 }
 
                 $Output = [int]( $param1 )
-                Write-Host "store output $In"
+                Write-Host "store output $Output"
 
                 $i += 2
                 break
