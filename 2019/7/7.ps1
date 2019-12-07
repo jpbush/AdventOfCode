@@ -3,7 +3,8 @@ function Run-OpCodes
 {
     param(
         [string] $CsvCodes,
-        [int[]] $In
+        [int] $Setting,
+        [int] $In
     )
 
     $codes = $CsvCodes.split(',')
@@ -11,7 +12,7 @@ function Run-OpCodes
 
     for($i = 0; $i -lt $codes.Length;)
     {
-        Write-Host "i = $i"
+        Write-Verbose "i = $i"
         # Resolve op code
         $codeRaw = $codes[$i]
         $codeStr = "{0:00000}" -f [int]$codeRaw
@@ -23,7 +24,7 @@ function Run-OpCodes
         switch ($opcode) {
             # add
             1 {
-                Write-Host "Opcode: 1"
+                Write-Verbose "Opcode: 1"
                 $i1 = [int]$codes[$i + 1]
                 if($param1Mode -eq 0) {
                     $param1 = [int]$codes[$i1]
@@ -53,14 +54,14 @@ function Run-OpCodes
 
                 $result = [int]( $param1 + $param2)
                 $codes[$i3] = $result
-                Write-Host "$param1 + $param2 = $result, store at index $i3"
+                Write-Verbose "$param1 + $param2 = $result, store at index $i3"
 
                 $i += 4
                 break
             }
             # multiply
             2 {
-                Write-Host "Opcode: 2"
+                Write-Verbose "Opcode: 2"
                 $i1 = [int]$codes[$i + 1]
                 if($param1Mode -eq 0) {
                     $param1 = [int]$codes[$i1]
@@ -90,14 +91,14 @@ function Run-OpCodes
 
                 $result = [int]( $param1 * $param2)
                 $codes[$i3] = $result
-                Write-Host "$param1 * $param2 = $result, store at index $i3"
+                Write-Verbose "$param1 * $param2 = $result, store at index $i3"
 
                 $i += 4
                 break
             }
             # input
             3 {
-                Write-Host "Opcode: 3"
+                Write-Verbose "Opcode: 3"
                 $i1 = [int]$codes[$i + 1]
                 if($param1Mode -eq 0) {
                     $param1 = [int]$codes[$i1]
@@ -106,16 +107,27 @@ function Run-OpCodes
                     throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($codes[$i+1])]"
                 }
 
-                $codes[$i1] = [int]( $In[$inputIndex] )
-                Write-Host "store input $In at index $i1"
-                $inputIndex++
+                if($inputIndex -eq 0) {
+                    $codes[$i1] = $Setting
+                    Write-Verbose "store setting $setting at index $i1"
+                    $inputIndex++
+
+                }
+                elseif($inputIndex -eq 1) {
+                    $codes[$i1] = $In
+                    Write-Verbose "store setting $In at index $i1"
+                    $inputIndex++
+                }
+                else {
+                   throw "too many inputs $inputIndex"
+                }
 
                 $i += 2
                 break
             }
             # output
             4 {
-                Write-Host "Opcode: 4"
+                Write-Verbose "Opcode: 4"
                 $i1 = [int]$codes[$i + 1]
                 if($param1Mode -eq 0) {
                     $param1 = [int]$codes[$i1]
@@ -128,14 +140,14 @@ function Run-OpCodes
                 }
 
                 $Output = [int]( $param1 )
-                Write-Host "store output $Output"
+                Write-Verbose "store output $Output"
 
                 $i += 2
                 break
             }
             # jump if true
             5 {
-                Write-Host "Opcode: 5"
+                Write-Verbose "Opcode: 5"
                 $i1 = [int]$codes[$i + 1]
                 if($param1Mode -eq 0) {
                     $param1 = [int]$codes[$i1]
@@ -160,18 +172,18 @@ function Run-OpCodes
 
                 if(([int]$param1) -ne 0) {
                     $i = $param2
-                    Write-Host "jump to $param2 cause true"
+                    Write-Verbose "jump to $param2 cause true"
                 }
                 else {
                     $i += 3
-                    Write-Host "don't jump cause was not true"
+                    Write-Verbose "don't jump cause was not true"
                 }
 
                 break
             }
             # jump if false
             6 {
-                Write-Host "Opcode: 6"
+                Write-Verbose "Opcode: 6"
                 $i1 = [int]$codes[$i + 1]
                 if($param1Mode -eq 0) {
                     $param1 = [int]$codes[$i1]
@@ -196,18 +208,18 @@ function Run-OpCodes
 
                 if(([int]$param1) -eq 0) {
                     $i = $param2
-                    Write-Host "jump to $param2 cause false"
+                    Write-Verbose "jump to $param2 cause false"
                 }
                 else {
                     $i += 3
-                    Write-Host "don't jump cause was not false"
+                    Write-Verbose "don't jump cause was not false"
                 }
 
                 break
             }
             # less than
             7 {
-                Write-Host "Opcode: 7"
+                Write-Verbose "Opcode: 7"
                 $i1 = [int]$codes[$i + 1]
                 if($param1Mode -eq 0) {
                     $param1 = [int]$codes[$i1]
@@ -242,7 +254,7 @@ function Run-OpCodes
             }
             # equal to
             8 {
-                Write-Host "Opcode: 8"
+                Write-Verbose "Opcode: 8"
                 $i1 = [int]$codes[$i + 1]
                 if($param1Mode -eq 0) {
                     $param1 = [int]$codes[$i1]
@@ -272,15 +284,15 @@ function Run-OpCodes
 
                 $result = [int]( $param1 -eq $param2 )
                 $codes[$i3] = $result
-                Write-Host "$param1 -lt $param2 = $result, store at index $i3"
+                Write-Verbose "$param1 -lt $param2 = $result, store at index $i3"
 
                 $i += 4
                 break
             }
             # exit
             99 {
-                Write-Host "Opcode: 99"
-                return "Output: $Output"
+                Write-Verbose "Opcode: 99"
+                return $Output
                 break
             }
             Default {
@@ -288,15 +300,61 @@ function Run-OpCodes
             }
         }
     }
-    return "Output: $Output"
+    return $Output
+}
+
+function Run-Amps
+{
+    param(
+        [string] $CsvCodes,
+        [int[]] $Settings,
+        [int] $In
+    )
+    
+    $aOut = Run-OpCodes -CsvCodes $content -Setting $Settings[0] -In $In
+    $bOut = Run-OpCodes -CsvCodes $content -Setting $Settings[1] -In $aOut
+    $cOut = Run-OpCodes -CsvCodes $content -Setting $Settings[2] -In $bOut
+    $dOut = Run-OpCodes -CsvCodes $content -Setting $Settings[3] -In $cOut
+    $eOut = Run-OpCodes -CsvCodes $content -Setting $Settings[4] -In $dOut
+    
+    return $eOut
 }
 
 function Run-Part1
 {
     [CmdletBinding()]
     param(
-        [string] $InFilename
+        [string] $InFilename,
+        [int] $In
     )
+
+    $content = (Get-Content $InFilename)
+
+    $minInput = 0
+    $maxInput = 5
+    $maxOutput = -1
+
+    for ($a = $minInput; $a -lt $maxInput; $a++) {
+        for ($b = $minInput; $b -lt $maxInput; $b++) {
+            for ($c = $minInput; $c -lt $maxInput; $c++) {
+                for ($d = $minInput; $d -lt $maxInput; $d++) {
+                    for ($e = $minInput; $e -lt $maxInput; $e++) {
+                        $settings = @($a, $b, $c, $d, $e)
+                        if($settings.Contains(0) -and $settings.Contains(1) -and $settings.Contains(2) -and $settings.Contains(3) -and $settings.Contains(4)){
+                            
+                            $out = [int](Run-Amps -CsvCodes $content -Settings $settings -In $In)
+
+                            if(($maxOutput -lt 0) -or ($out -gt $maxOutput)) {
+                                $maxOutput = $out
+                                $maxSettings = "$settings"
+                            }
+                            Write-Host "maxSettings: $maxSettings, maxOutput: $maxOutput, settings: $settings output: $out"
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 function Run-Part2
