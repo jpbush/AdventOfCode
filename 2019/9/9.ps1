@@ -472,8 +472,14 @@ function Run-Part1
 {
     [CmdletBinding()]
     param(
-        [string] $InFilename
+        [string] $InFilename,
+        [int[]] $In
     )
+
+    $content = (Get-Content $InFilename)
+    $program = [ProgramState]::New($content.split(','), 0, 0, @(), @(), 0)
+    $program = Run-OpCodes -state $program
+    Write-Host "output: [$($program.outBuff -join '],[')]"
 }
 
 function Run-Part2
