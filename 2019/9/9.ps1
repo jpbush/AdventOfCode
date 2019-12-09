@@ -489,7 +489,8 @@ function Run-Part1
     $content = (Get-Content $InFilename)
     $program = [ProgramState]::New($content.split(','), 0, 0, @(), @(), 0)
     $program = Run-OpCodes -state $program
-    Write-Host "output: [$($program.outBuff -join '],[')]"
+    Write-Host "program: [$($content.split(',') -join ',')]"
+    Write-Host "output:  [$($program.outBuff -join ',')]"
 }
 
 function Run-Part2
