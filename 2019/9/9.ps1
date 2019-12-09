@@ -33,7 +33,7 @@ class ProgramState {
         }
     }
 
-    [int] IsValidAddress([int] $Address) {
+    [bool] IsValidAddress([int] $Address) {
         return $Address -lt $this.codes.Length
     }
 
@@ -45,7 +45,7 @@ class ProgramState {
         return
     }
 
-    [int] Get([int] $Address) {
+    [long] Get([int] $Address) {
         $this.AddMemoryIfNeeded($Address)
         return $this.codes[$Address]
     }
