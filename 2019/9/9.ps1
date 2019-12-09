@@ -18,6 +18,32 @@ class ProgramState {
         $this.exitCode = $exitCode
         $this.isHalted = $false
     }
+
+    AddMemory([int] $maxAddress) {
+        $memoryToAdd = ($maxAddress - $this.codes.Length + 1)
+        if($memoryToAdd -le 0) {
+            throw "cannot add $memoryToAdd amount of memory"
+        }
+        Write-Verbose "Adding $memoryToAdd memory to codes"
+        Write-Verbose "Memory size will be $maxAddress"
+
+        $this.codes += ,@('0')*$memoryToAdd
+        if($this.codes.Length -ne ($maxAddress+1)){
+            throw "didn't add enough memory. memory: $($this.codes.Length), maxAddress: $maxAddress"
+        }
+    }
+
+    IsValidAddress([int] $Address) {
+        return $Address -lt $this.codes.Length
+    }
+
+    AddMemoryIfNeeded([int] $Address) {
+        if(!$this.IsValidAddress($Address) {
+            Write-Verbose "Gonna need to add more memory to reach address: $Address"
+            AddMemory($Address)
+        }
+        return
+    }
 }
 
 function Run-OpCodes
