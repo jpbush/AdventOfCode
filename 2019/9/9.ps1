@@ -44,6 +44,16 @@ class ProgramState {
         }
         return
     }
+
+    Get([int] $Address) {
+        $this.AddMemoryIfNeeded($Address)
+        return $this.codes[$Address]
+    }
+
+    Set([int] $Address, [long] $Val) {
+        $this.AddMemoryIfNeeded($Address)
+        $this.codes[$Address] = $Val
+    }
 }
 
 function Run-OpCodes
@@ -61,7 +71,7 @@ function Run-OpCodes
     {
         Write-Verbose "i = $i"
         # Resolve op code
-        $codeRaw = $state.codes[$i]
+        $codeRaw = $state.Get($i)
         $codeStr = "{0:00000}" -f [int]$codeRaw
         $opcode = [int] $codeStr.Substring(3,2)
         $param1Mode = [int] $codeStr.Substring(2,1)
@@ -72,50 +82,50 @@ function Run-OpCodes
             # add
             1 {
                 Write-Verbose "Opcode: 1"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
-                    $param1 = [long]$state.codes[$i1]
+                    $param1 = [long]$state.Get($i1)
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 elseif($param1Mode -eq 2) {
-                    $param1 = [long]$state.codes[$i1+$RelativeBase]
+                    $param1 = [long]$state.Get($i1+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 
-                $i2 = [long]$state.codes[$i + 2]
+                $i2 = [long]$state.Get($i + 2)
                 if($param2Mode -eq 0) {
-                    $param2 = [long]$state.codes[$i2]
+                    $param2 = [long]$state.Get($i2)
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 elseif($param2Mode -eq 2) {
-                    $param2 = [long]$state.codes[$i2+$RelativeBase]
+                    $param2 = [long]$state.Get($i2+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 $result = [long]( $param1 + $param2)
                 
-                $i3 = [long]$state.codes[$i + 3]
+                $i3 = [long]$state.Get($i + 3)
                 if($param3Mode -eq 0) {
-                    $state.codes[$i3] = $result
+                    $state.Set($i3, $result)
                     Write-Verbose "$param1 + $param2 = $result, store at index $i3"
                 }
                 elseif($param3Mode -eq 1) {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 elseif($param3Mode -eq 2) {
-                    $state.codes[$i3+$RelativeBase] = $result
+                    $state.Set($i3+$RelativeBase, $result)
                     Write-Verbose "$param1 + $param2 = $result, store at index $i3+$RelativeBase"
                 }
                 else {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 $i += 4
@@ -124,50 +134,50 @@ function Run-OpCodes
             # multiply
             2 {
                 Write-Verbose "Opcode: 2"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
-                    $param1 = [long]$state.codes[$i1]
+                    $param1 = [long]$state.Get($i1)
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 elseif($param1Mode -eq 2) {
-                    $param1 = [long]$state.codes[$i1+$RelativeBase]
+                    $param1 = [long]$state.Get($i1+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 
-                $i2 = [long]$state.codes[$i + 2]
+                $i2 = [long]$state.Get($i + 2)
                 if($param2Mode -eq 0) {
-                    $param2 = [long]$state.codes[$i2]
+                    $param2 = [long]$state.Get($i2)
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 elseif($param2Mode -eq 2) {
-                    $param2 = [long]$state.codes[$i2+$RelativeBase]
+                    $param2 = [long]$state.Get($i2+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 $result = [long]( $param1 * $param2)
                 
-                $i3 = [long]$state.codes[$i + 3]
+                $i3 = [long]$state.Get($i + 3)
                 if($param3Mode -eq 0) {
-                    $state.codes[$i3] = $result
+                    $state.Set($i3, $result)
                     Write-Verbose "$param1 * $param2 = $result, store at index $i3"
                 }
                 elseif($param3Mode -eq 1) {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 elseif($param3Mode -eq 2) {
-                    $state.codes[$i3+$RelativeBase] = $result
+                    $state.Set($i3+$RelativeBase, $result)
                     Write-Verbose "$param1 + $param2 = $result, store at index $i3+$RelativeBase"
                 }
                 else {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 $i += 4
@@ -176,18 +186,18 @@ function Run-OpCodes
             # input
             3 {
                 Write-Verbose "Opcode: 3"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
                 }
                 elseif($param1Mode -eq 2) {
                     $i1 += $RelativeBase
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 if($inIndex -lt $state.InBuff.Length) {
-                    $state.codes[$i1] = $state.InBuff[$inIndex]
+                    $state.Set($i1, $state.InBuff[$inIndex])
                     Write-Verbose "store setting $($state.InBuff) at index $i1"
                     $inIndex++
                 }
@@ -205,18 +215,18 @@ function Run-OpCodes
             # output
             4 {
                 Write-Verbose "Opcode: 4"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
-                    $param1 = [long]$state.codes[$i1]
+                    $param1 = [long]$state.Get($i1)
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 elseif($param1Mode -eq 2) {
-                    $param1 = [long]$state.codes[$i1+$RelativeBase]
+                    $param1 = [long]$state.Get($i1+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 Write-Verbose "store output $param1"
@@ -228,32 +238,32 @@ function Run-OpCodes
             # jump if true
             5 {
                 Write-Verbose "Opcode: 5"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
-                    $param1 = [long]$state.codes[$i1]
+                    $param1 = [long]$state.Get($i1)
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 elseif($param1Mode -eq 2) {
-                    $param1 = [long]$state.codes[$i1+$RelativeBase]
+                    $param1 = [long]$state.Get($i1+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 
-                $i2 = [long]$state.codes[$i + 2]
+                $i2 = [long]$state.Get($i + 2)
                 if($param2Mode -eq 0) {
-                    $param2 = [long]$state.codes[$i2]
+                    $param2 = [long]$state.Get($i2)
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 elseif($param2Mode -eq 2) {
-                    $param2 = [long]$state.codes[$i2+$RelativeBase]
+                    $param2 = [long]$state.Get($i2+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 if(([long]$param1) -ne 0) {
@@ -270,32 +280,32 @@ function Run-OpCodes
             # jump if false
             6 {
                 Write-Verbose "Opcode: 6"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
-                    $param1 = [long]$state.codes[$i1]
+                    $param1 = [long]$state.Get($i1)
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 elseif($param1Mode -eq 2) {
-                    $param1 = [long]$state.codes[$i1+$RelativeBase]
+                    $param1 = [long]$state.Get($i1+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 
-                $i2 = [long]$state.codes[$i + 2]
+                $i2 = [long]$state.Get($i + 2)
                 if($param2Mode -eq 0) {
-                    $param2 = [long]$state.codes[$i2]
+                    $param2 = [long]$state.Get($i2)
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 elseif($param2Mode -eq 2) {
-                    $param2 = [long]$state.codes[$i2+$RelativeBase]
+                    $param2 = [long]$state.Get($i2+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 if(([long]$param1) -eq 0) {
@@ -312,50 +322,50 @@ function Run-OpCodes
             # less than
             7 {
                 Write-Verbose "Opcode: 7"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
-                    $param1 = [long]$state.codes[$i1]
+                    $param1 = [long]$state.Get($i1)
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 elseif($param1Mode -eq 2) {
-                    $param1 = [long]$state.codes[$i1+$RelativeBase]
+                    $param1 = [long]$state.Get($i1+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 
-                $i2 = [long]$state.codes[$i + 2]
+                $i2 = [long]$state.Get($i + 2)
                 if($param2Mode -eq 0) {
-                    $param2 = [long]$state.codes[$i2]
+                    $param2 = [long]$state.Get($i2)
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 elseif($param2Mode -eq 2) {
-                    $param2 = [long]$state.codes[$i2+$RelativeBase]
+                    $param2 = [long]$state.Get($i2+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 $result = [long]( $param1 -lt $param2 )
                 
-                $i3 = [long]$state.codes[$i + 3]
+                $i3 = [long]$state.Get($i + 3)
                 if($param3Mode -eq 0) {
-                    $state.codes[$i3] = $result
+                    $state.Set($i3, $result)
                     Write-Verbose "$param1 < $param2 = $result, store at index $i3"
                 }
                 elseif($param3Mode -eq 1) {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 elseif($param3Mode -eq 2) {
-                    $state.codes[$i3+$RelativeBase] = $result
+                    $state.Set($i3+$RelativeBase, $result)
                     Write-Verbose "$param1 < $param2 = $result, store at index $i3+$RelativeBase"
                 }
                 else {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 $i += 4
@@ -364,50 +374,50 @@ function Run-OpCodes
             # equal to
             8 {
                 Write-Verbose "Opcode: 8"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
-                    $param1 = [long]$state.codes[$i1]
+                    $param1 = [long]$state.Get($i1)
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 elseif($param1Mode -eq 2) {
-                    $param1 = [long]$state.codes[$i1+$RelativeBase]
+                    $param1 = [long]$state.Get($i1+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 
-                $i2 = [long]$state.codes[$i + 2]
+                $i2 = [long]$state.Get($i + 2)
                 if($param2Mode -eq 0) {
-                    $param2 = [long]$state.codes[$i2]
+                    $param2 = [long]$state.Get($i2)
                 }
                 elseif($param2Mode -eq 1) {
                     $param2 = $i2
                 }
                 elseif($param2Mode -eq 2) {
-                    $param2 = [long]$state.codes[$i2+$RelativeBase]
+                    $param2 = [long]$state.Get($i2+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 2 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 $result = [long]( $param1 -eq $param2 )
                 
-                $i3 = [long]$state.codes[$i + 3]
+                $i3 = [long]$state.Get($i + 3)
                 if($param3Mode -eq 0) {
-                    $state.codes[$i3] = $result
+                    $state.Set($i3, $result)
                     Write-Verbose "$param1 == $param2 = $result, store at index $i3"
                 }
                 elseif($param3Mode -eq 1) {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
                 elseif($param3Mode -eq 2) {
-                    $state.codes[$i3+$RelativeBase] = $result
+                    $state.Set($i3+$RelativeBase, $result)
                     Write-Verbose "$param1 == $param2 = $result, store at index $i3+$RelativeBase"
                 }
                 else {
-                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 3 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 $i += 4
@@ -416,18 +426,18 @@ function Run-OpCodes
             # adjust relative base
             9 {
                 Write-Verbose "Opcode: 9"
-                $i1 = [long]$state.codes[$i + 1]
+                $i1 = [long]$state.Get($i + 1)
                 if($param1Mode -eq 0) {
-                    $param1 = [long]$state.codes[$i1]
+                    $param1 = [long]$state.Get($i1)
                 }
                 elseif($param1Mode -eq 1) {
                     $param1 = $i1
                 }
                 elseif($param1Mode -eq 2) {
-                    $param1 = [long]$state.codes[$i1+$RelativeBase]
+                    $param1 = [long]$state.Get($i1+$RelativeBase)
                 }
                 else {
-                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.codes[$i+1]), $($state.codes[$i+2]), $($state.codes[$i+3])]"
+                    throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
                 Write-Verbose "store $param1 as the relative base"
