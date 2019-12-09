@@ -4,7 +4,7 @@ param(
     [int[]] $In
 )
 
-. $PSScriptRoot/9.ps1
+. $PSScriptRoot/lib.ps1
 
 $content = (Get-Content $InFilename)
 $program = [ProgramState]::New($content.split(','), 0, 0, $In, @(), 0)
