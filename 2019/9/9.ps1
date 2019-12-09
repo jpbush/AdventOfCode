@@ -33,19 +33,19 @@ class ProgramState {
         }
     }
 
-    IsValidAddress([int] $Address) {
+    [int] IsValidAddress([int] $Address) {
         return $Address -lt $this.codes.Length
     }
 
     AddMemoryIfNeeded([int] $Address) {
-        if(!$this.IsValidAddress($Address) {
+        if(!$this.IsValidAddress($Address)) {
             Write-Verbose "Gonna need to add more memory to reach address: $Address"
             AddMemory($Address)
         }
         return
     }
 
-    Get([int] $Address) {
+    [int] Get([int] $Address) {
         $this.AddMemoryIfNeeded($Address)
         return $this.codes[$Address]
     }
