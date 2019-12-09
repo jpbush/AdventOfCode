@@ -25,12 +25,13 @@ class ProgramState {
             throw "cannot add $memoryToAdd amount of memory"
         }
         Write-Verbose "Adding $memoryToAdd memory to codes"
-        Write-Verbose "Memory size will be $maxAddress"
+        Write-Verbose "MaxAddress will be $maxAddress"
 
         $this.codes += ,@('0')*$memoryToAdd
         if($this.codes.Length -ne ($maxAddress+1)){
             throw "didn't add enough memory. memory: $($this.codes.Length), maxAddress: $maxAddress"
         }
+        Write-Verbose "code length is now: $($this.codes.Length)"
     }
 
     [bool] IsValidAddress([int] $Address) {
@@ -271,11 +272,11 @@ function Run-OpCodes
 
                 if(([long]$param1) -ne 0) {
                     $i = $param2
-                    Write-Verbose "jump to $param2 cause true"
+                    Write-Verbose "jump to $param2 cause $param1 true"
                 }
                 else {
                     $i += 3
-                    Write-Verbose "don't jump cause was not true"
+                    Write-Verbose "don't jump to $param2 cause $param1 not true"
                 }
 
                 break
@@ -315,11 +316,11 @@ function Run-OpCodes
 
                 if(([long]$param1) -eq 0) {
                     $i = $param2
-                    Write-Verbose "jump to $param2 cause false"
+                    Write-Verbose "jump to $param2 cause $param1 false"
                 }
                 else {
                     $i += 3
-                    Write-Verbose "don't jump cause was not false"
+                    Write-Verbose "don't jump to $param2 cause $param1 false"
                 }
 
                 break
@@ -450,8 +451,9 @@ function Run-OpCodes
                     throw "ERROR: invalid param 1 mode at index [$i], instruction [$opcode, $($state.Get($i+1)), $($state.Get($i+2)), $($state.Get($i+3))]"
                 }
 
-                Write-Verbose "store $param1 as the relative base"
+                $oldBase = $state.RelativeBase
                 $state.RelativeBase += [long]( $param1 )
+                Write-Verbose "Add $param1 to Base. newBase: $($state.RelativeBase), oldBase: $oldBase"
 
                 $i += 2
                 break
@@ -470,6 +472,8 @@ function Run-OpCodes
                 throw "ERROR: invalid opcode at index [$i], opcode [$opcode]"
             }
         }
+        
+        Write-Host "i: $i"
     }
     $state.exitCode = 2
     $state.InBuff = @($state.InBuff[$inIndex..($state.InBuff.Length-1)])
@@ -487,9 +491,9 @@ function Run-Part1
     )
 
     $content = (Get-Content $InFilename)
-    $program = [ProgramState]::New($content.split(','), 0, 0, @(), @(), 0)
+    $program = [ProgramState]::New($content.split(','), 0, 0, $In, @(), 0)
     $program = Run-OpCodes -state $program
-    Write-Host "program: [$($content.split(',') -join ',')]"
+    Write-Verbose "program: [$($content.split(',') -join ',')]"
     Write-Host "output:  [$($program.outBuff -join ',')]"
 }
 
