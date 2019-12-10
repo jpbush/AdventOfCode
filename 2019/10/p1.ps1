@@ -5,4 +5,6 @@ param(
 
 . $PSScriptRoot/lib.ps1
 
-$content = (Get-Content $InFilename)
+$space = Create-Space -InFilename $InFilename
+
+Find-OneWithMostVisible -Space $space
