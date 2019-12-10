@@ -7,4 +7,6 @@ param(
 
 $space = Create-Space -InFilename $InFilename
 
-Find-OneWithMostVisible -Space $space
+$result = Find-OneWithMostVisible -Space $space
+$result.point
+$result.count

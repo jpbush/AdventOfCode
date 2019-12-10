@@ -37,6 +37,77 @@ function Find-UnitVector {
     return @{X = $unitX; Y = $unitY}
 }
 
+function Find-Angle {
+    [CmdletBinding()]
+    param(
+        [hashtable] $P1,
+        [hashtable] $P2
+    )
+    
+    $diffX = $P2.X - $P1.X
+    $diffY = $P2.Y - $P1.Y
+    $len = [math]::Sqrt(($diffX*$diffX) + ($diffY*$diffY))
+    $unitX = [math]::round(($diffX / $len), 3)
+    $unitY = [math]::round(($diffY / $len), 3)
+    # $unitX = ($diffX / $len)
+    # $unitY = ($diffY / $len)
+
+    return @{X = $unitX; Y = $unitY}
+}
+
+function Find-Distance {
+    [CmdletBinding()]
+    param(
+        [hashtable] $P1,
+        [hashtable] $P2
+    )
+    
+    $diffX = $P2.X - $P1.X
+    $diffY = $P2.Y - $P1.Y
+    $len = [math]::Sqrt(($diffX*$diffX) + ($diffY*$diffY))
+    return $len
+}
+
+function Find-VectorAngle {
+    [CmdletBinding()]
+    param(
+        [hashtable] $P1
+    )
+
+    if ($P1.X -eq 0) {
+        # can't divide by 0
+        if($P1.Y -ge 0) {
+            return 90
+        }
+        else {
+            return 270
+        }
+    }
+    
+    $angle = [math]::round(([math]::atan($P1.Y / $P1.X) * 180 / [math]::pi), 3)
+    if($P1.Y -ge 0) {
+        if($P1.X -ge 0) {
+            # quad 1
+        }
+        else {
+            # quad 2
+            $angle += 180
+        }
+    }
+    else {
+        if($P1.X -ge 0) {
+            # quad 4
+            $angle += 360
+        }
+        else {
+            # quad 3
+            $angle += 180
+        }
+    }
+
+    return $angle
+}
+
 function Find-VisbleCount {
     [CmdletBinding()]
     param(
@@ -51,7 +122,8 @@ function Find-VisbleCount {
         }
         else {
             $unitVector = (Find-UnitVector -P1 $P1 -P2 $P2)
-            $uniqueVectors["$($unitVector.X), $($unitVector.Y)"] = $unitVector
+            $unitKey = "$($unitVector.X), $($unitVector.Y)"
+            $uniqueVectors[$unitKey] = $unitVector
         }
     }
     $uniqueCount = $($uniqueVectors.Keys).Length
@@ -79,5 +151,50 @@ function Find-OneWithMostVisible {
         }
     }
     
-    Write-Host "count: $biggestCount, X: $($biggestCountPoint.X), Y: $($biggestCountPoint.Y)"
+    return @{point = $biggestCountPoint; count = $biggestCount}
+}
+
+function Group-ByAngleSortByDist {
+    param(
+        [hashtable] $Space,
+        [hashtable] $P1
+    )
+
+    Write-Verbose "Group-ByAngleSortByDist"
+
+    $asteroids = @{}
+    foreach ($key in $space.Keys) {
+        $P2 = $Space[$key]
+        if( ($P2.X -eq $P1.X) -and ($P2.Y -eq $P1.Y) ) {
+            Write-Verbose "ignore the same point"
+        }
+        else {
+            $angle = ((Find-VectorAngle -P1 (Find-UnitVector -P1 $P1 -P2 $P2)) + 450) % 360
+            $distance = Find-Distance -P1 $P1 -P2 $P2
+            
+            Write-Verbose "($($P2.X), $($P2.X)), angle $angle, dist $dist"
+            if ($asteroids.ContainsKey($angle)) {
+                $asteroids[$angle] += @(@{angle = $angle; point = $P2; dist = $distance})
+            }
+            else {
+                $asteroids[$angle] = @(@{angle = $angle; point = $P2; dist = $distance})
+            }
+        }
+    }
+
+    $uniqueCount = $($asteroids.Keys).Length
+    Write-Verbose "unique: $uniqueCount"
+
+    # Sort by distance, angle
+    $asteroids2 = @{}
+    foreach ($key in $asteroids.Keys) {
+        $sorted = $asteroids[$key] | Sort-Object -Property dist
+        $asteroids2[$key] = $sorted
+    }
+    $asteroids = $asteroids2
+
+    $uniqueCount = $($asteroids.Keys).Length
+    Write-Verbose "unique: $uniqueCount"
+
+    return $asteroids
 }
