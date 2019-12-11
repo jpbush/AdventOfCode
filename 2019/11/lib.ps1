@@ -1,5 +1,47 @@
 
 
+class point {
+    [int]$x = 0
+    [int]$y = 0
+
+    point() { }
+
+    point([int] $x, [int] $y) {
+        $this.x = $x
+        $this.y = $y
+    }
+
+    point([point] $p)
+    {
+        $this.x = $p.x
+        $this.y = $p.y
+    }
+
+    point ([string] $str) 
+    {
+        $split = $str.split(',')
+        $this.x = $split[0]
+        $this.y = $split[1]
+    }
+
+    Add ([point] $p)
+    {
+        $this.x += $p.x
+        $this.y += $p.y
+    }
+
+    AddVector ([vector] $v)
+    {
+        $this.x += $v.x
+        $this.y += $v.y
+    }
+
+    [string] Hash () 
+    {
+        return "$($this.x),$($this.y)"
+    }
+}
+
 class ProgramState {
     [string[]] $codes
     [long] $PC
@@ -480,4 +522,19 @@ function Run-OpCodes
     $state.PC = $i
     $state.isHalted = $true
     return $state
+}
+
+class Robot {
+    [ProgramState] $PS
+
+
+    ProgramState([string[]] $codes, [long] $PC, [long] $RelativeBase, [long[]] $InBuff, [long[]] $OutBuff, [int] $exitCode) {
+        $this.codes = $codes
+        $this.PC = $PC
+        $this.RelativeBase = $RelativeBase
+        $this.InBuff = $InBuff
+        $this.OutBuff = $OutBuff
+        $this.exitCode = $exitCode
+        $this.isHalted = $false
+    }
 }
