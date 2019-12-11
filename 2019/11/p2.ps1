@@ -36,27 +36,19 @@ Write-Host "minX = $minX, maxX = $maxX, miny = $minY, maxY = $maxY"
 # Build the message array
 $yDiff = $maxY-$minY
 $xDiff = $maxX-$minX
-$arr = New-Object 'object[,]' ($yDiff+1),($xDiff+1)
-Write-Host "Array size $($arr.Count)"
-foreach($key in $robot.PastSpots.Keys) {
-    $point = $robot.PastSpots[$key].Point
-    $x = $point.x
-    $y = $point.y
-    $color = $robot.PastSpots[$key].Color
-    $yI = $y-$minY
-    $xI = $x-$minX
-    Write-Verbose "x, y: ($xI),($yI)"
-    $arr[$yI,$xI] = $color
-}
-
-$OutFile = "out.txt"
-Remove-Item $OutFile -Force -ErrorAction Ignore
 for($y = $minY; $y -le $maxY; $y++) {
-    $line = for($x = $minX; $x -le $maxX; $x++) {
-        $yI = $y-$minY
-        $xI = $x-$minX
-        $arr[$yI,$xI]
+    for($x = $minX; $x -le $maxX; $x++) {
+        $color = $robot.PastSpots["$x,$y"].Color
+        if($color -eq 1) {
+            $fg = "White"
+            $bc = "Gray"
+        }
+        else {
+            $fg = "DarkGray"
+            $bc = "Black"
+            $color = 0
+        }
+        Write-Host "$color" -BackgroundColor $bc -ForegroundColor $fg -NoNewline
     }
-    $line = $line -join ','
-    $line | Add-Content -Path $OutFile
+    Write-Host
 }
