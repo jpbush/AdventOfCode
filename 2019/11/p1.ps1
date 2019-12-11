@@ -1,13 +1,16 @@
 [CmdletBinding()]
 param(
-    [string] $InFilename,
-    [int[]] $In
+    [string] $InFilename
 )
 
 . $PSScriptRoot/lib.ps1
 
 $content = (Get-Content $InFilename)
-$program = [ProgramState]::New($content.split(','), 0, 0, $In, @(), 0)
-$program = Run-OpCodes -state $program
-Write-Verbose "program: [$($content.split(',') -join ',')]"
-Write-Host "output:  [$($program.outBuff -join ',')]"
+$robot = [Robot]::New($content.split(','))
+
+While($robot.Brain.isHalted -eq $false)
+{
+    $robot.RunTick()
+}
+
+Write-Host "Number of unique spaces painted: $($robot.PastSpots.Keys.Count)"

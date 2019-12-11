@@ -30,12 +30,6 @@ class point {
         $this.y += $p.y
     }
 
-    AddVector ([vector] $v)
-    {
-        $this.x += $v.x
-        $this.y += $v.y
-    }
-
     [string] Hash () 
     {
         return "$($this.x),$($this.y)"
@@ -104,6 +98,10 @@ function Run-OpCodes
     param(
         [ProgramState] $state
     )
+
+    Write-Verbose "Program starting..."
+    Write-Verbose "PC = $($state.PC), RelativeBase = $($state.RelativeBase), InBuff = ($($state.InBuff)), OutBuff = ($($state.OutBuff))"
+
     if($state.isHalted) {
         return $state
     }
@@ -514,8 +512,6 @@ function Run-OpCodes
                 throw "ERROR: invalid opcode at index [$i], opcode [$opcode]"
             }
         }
-        
-        Write-Host "i: $i"
     }
     $state.exitCode = 2
     $state.InBuff = @($state.InBuff[$inIndex..($state.InBuff.Length-1)])
@@ -525,16 +521,124 @@ function Run-OpCodes
 }
 
 class Robot {
-    [ProgramState] $PS
-    [hashtable] $pastSpots
+    [ProgramState] $Brain
+    [point] $Location
+    [string] $direction
+    [hashtable] $PastSpots
 
-    ProgramState([string[]] $codes, [long] $PC, [long] $RelativeBase, [long[]] $InBuff, [long[]] $OutBuff, [int] $exitCode) {
-        $this.codes = $codes
-        $this.PC = $PC
-        $this.RelativeBase = $RelativeBase
-        $this.InBuff = $InBuff
-        $this.OutBuff = $OutBuff
-        $this.exitCode = $exitCode
-        $this.isHalted = $false
+    Robot([string[]] $BrainCodes) {
+        $this.Brain = [ProgramState]::New($BrainCodes, 0, 0, @(), @(), 0)
+        $this.Location = [point]::New(0,0)
+        $this.direction = "u"
+        $this.PastSpots = @{}
+    }
+
+    AddInput([long[]] $InBuff) {
+        $this.Brain.InBuff += $InBuff
+    }
+
+    [long[]] GetOutput() {
+        $output = $this.Brain.OutBuff
+        $this.Brain.OutBuff = @()
+        return $output
+    }
+
+    [long[]] BuildInput() {
+        $currColor = 0
+        if($this.PastSpots.ContainsKey($this.Location.Hash())) {
+            $currColor = $this.PastSpots[$this.Location.Hash()].Color
+        }
+        $input = @([long]$currColor)
+        return $input
+    }
+
+    PaintSpot([int]$Color) {
+        $this.PastSpots[$this.Location.Hash()] = @{Color = $Color; Point = [point]::new($this.Location)}
+    }
+
+    Rotate([int]$DirectionToTurn) {
+        switch ($DirectionToTurn) {
+            # left
+            0 {
+                switch ($this.direction) {
+                    "u" {
+                        $this.direction = "l"
+                    }
+                    "d" {
+                        $this.direction = "r"
+                    }
+                    "l" {
+                        $this.direction = "d"
+                    }
+                    "r" {
+                        $this.direction = "u"
+                    }
+                    default {
+                        throw "invalid direction $_"
+                    }
+                }
+            }
+            # right
+            1 {
+                switch ($this.direction) {
+                    "u" {
+                        $this.direction = "r"
+                    }
+                    "d" {
+                        $this.direction = "l"
+                    }
+                    "l" {
+                        $this.direction = "u"
+                    }
+                    "r" {
+                        $this.direction = "d"
+                    }
+                    default {
+                        throw "invalid direction $_"
+                    }
+                }
+            }
+            default {
+                throw "Invalid direction to turn $_"
+            }
+        }
+    }
+
+    Move() {
+        switch ($this.direction) {
+            "u" {
+                $this.Location.y--
+            }
+            "d" {
+                $this.Location.y++
+            }
+            "l" {
+                $this.Location.x--
+            }
+            "r" {
+                $this.Location.x++
+            }
+            default {
+                throw "invalid direction $_"
+            }
+        }
+    }
+
+    RunTick() {
+        $input = $this.BuildInput()
+        $this.AddInput($input)
+        
+        Run-OpCodes -state $this.Brain
+        $output = $this.GetOutput()
+        if($output.Length -ne 2) {
+            throw "Output length was not 2"
+        }
+
+        Write-Verbose "Painting: ($($this.Location.Hash())), color: $($output[0]))"
+        $this.PaintSpot($output[0])
+        Write-Verbose "Turning $($output[1]))"
+        $this.Rotate($output[1])
+        $this.Move()
+        Write-Verbose "New location ($($this.Location.Hash())"
     }
 }
