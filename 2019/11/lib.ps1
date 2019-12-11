@@ -526,7 +526,7 @@ function Run-OpCodes
 
 class Robot {
     [ProgramState] $PS
-
+    [hashtable] $pastSpots
 
     ProgramState([string[]] $codes, [long] $PC, [long] $RelativeBase, [long[]] $InBuff, [long[]] $OutBuff, [int] $exitCode) {
         $this.codes = $codes
