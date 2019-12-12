@@ -5,48 +5,46 @@ class point {
     [int]$y = 0
     [int]$z = 0
 
-    point() { }
+    point(){ }
 
     point([int] $x, [int] $y, [int] $z) {
-        $this.x = $x
-        $this.y = $y
-        $this.z = $z
+        $this.Set($x, $y, $z)
     }
 
-    point([point] $p)
-    {
-        $this.x = $p.x
-        $this.y = $p.y
-        $this.z = $p.z
+    point([point] $p) {
+        $this.Set($p.x, $p.y, $p.z)
     }
 
-    point ([string] $str) 
-    {
+    point([string] $str) {
         # format: "<x=[x], y=[y], z=[z]>"
         $strArr = ($str.Substring(1, $str.Length-2)).Split(',').Trim()
         $strArr = foreach($str in $strArr) {
             $str.Substring(2, $str.Length-2)
         }
-        $this.x = $strArr[0]
-        $this.y = $strArr[1]
-        $this.z = $strArr[2]
+        $this.Set($strArr[0], $strArr[1], $strArr[2])
     }
 
-    Add ([point] $p)
-    {
-        $this.x += $p.x
-        $this.y += $p.y
-        $this.z += $p.z
+    Set([int] $x, [int] $y, [int] $z) {
+        $this.x = $x
+        $this.y = $y
+        $this.z = $z
     }
 
-    AddVector ([vector] $v)
-    {
-        $this.x += $v.x
-        $this.y += $v.y
-        $this.z += $v.z
+    Add([int] $x, [int] $y, [int] $z) {
+        $this.x += $x
+        $this.y += $y
+        $this.z += $z
     }
 
-    [string] Hash () 
+    Add([point] $p) {
+        $this.Add($p.x, $p.y, $p.z)
+    }
+
+    AddVector([vector] $v) {
+        $this.Add($v.x, $v.y, $v.z)
+    }
+
+    [string] GetHash () 
     {
         return "$($this.x),$($this.y),$($this.z)"
     }
@@ -62,37 +60,33 @@ class vector {
     [int]$y = 0
     [int]$z = 0
 
-    vector() { }
+    vector(){ }
 
     vector([int] $x, [int] $y, [int] $z) {
+        $this.Set($x, $y, $z)
+    }
+
+    vector([vector] $v) {
+        $this.Set($v.x, $v.y, $v.z)
+    }
+
+    Set([int] $x, [int] $y, [int] $z) {
         $this.x = $x
         $this.y = $y
         $this.z = $z
     }
 
-    vector([vector] $v)
-    {
-        $this.x = $v.x
-        $this.y = $v.y
-        $this.z = $v.z
+    Add([int] $x, [int] $y, [int] $z) {
+        $this.x += $x
+        $this.y += $y
+        $this.z += $z
     }
 
-    vector ([string] $str) 
-    {
-        $split = $str.split(',')
-        $this.x = $split[0]
-        $this.y = $split[1]
-        $this.z = $split[2]
+    Add([vector] $v) {
+        $this.Add($v.x, $v.y, $v.z)
     }
 
-    Add ([vector] $v)
-    {
-        $this.x += $v.x
-        $this.y += $v.y
-        $this.z += $v.z
-    }
-
-    [string] Hash () 
+    [string] GetHash () 
     {
         return "$($this.x),$($this.y),$($this.z)"
     }
@@ -137,7 +131,7 @@ class moon {
         return $energy
     }
 
-    [string] Hash () {
+    [string] GetHash () {
         return "$($this.name)"
     }
 
