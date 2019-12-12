@@ -44,14 +44,14 @@ class point {
         $this.Add($v.x, $v.y, $v.z)
     }
 
-    [string] GetHash () 
+    [string] GetHash() 
     {
         return "$($this.x),$($this.y),$($this.z)"
     }
 
-    [string] ToString () 
+    [string] ToString() 
     {
-        return "x=$($this.x),y=$($this.y),z=$($this.z)"
+        return "x=$($this.x), y=$($this.y), z=$($this.z)"
     }
 }
 
@@ -86,44 +86,47 @@ class vector {
         $this.Add($v.x, $v.y, $v.z)
     }
 
-    [string] GetHash () 
+    [string] GetHash() 
     {
         return "$($this.x),$($this.y),$($this.z)"
     }
 
-    [string] ToString () 
+    [string] ToString() 
     {
-        return "x=$($this.x),y=$($this.y),z=$($this.z)"
+        return "x=$($this.x), y=$($this.y), z=$($this.z)"
     }
 }
 
 class moon {
     [string] $name
-    [point] $location
+    [point] $position
     [vector] $velocity
 
-    moon([string] $name, [point] $location) {
+    moon([string] $name, [point] $position) {
         $this.name = $name
-        $this.location = [point]::new($location)
+        $this.position = [point]::new($position)
         $this.velocity = [vector]::new(0,0,0)
     }
 
-    ApplyVelocity ([int] $axis = -1) {
-        if($axis -lt 0 -or $axis -eq 0) {
-            $this.location.x += $this.velocity.x
-        }
-        
-        if($axis -lt 0 -or $axis -eq 1) {
-            $this.location.y += $this.velocity.y
-        }
-        
-        if($axis -lt 0 -or $axis -eq 2) {
-            $this.location.z += $this.velocity.z
+    ApplyVelocity([int] $axis) {
+        switch ($axis) {
+            0 {
+                $this.position.x += $this.velocity.x
+            }
+            1 {
+                $this.position.y += $this.velocity.y
+            }
+            2 {
+                $this.position.z += $this.velocity.z
+            }
+            default {
+                $this.position.AddVector($this.velocity)
+            }
         }
     }
 
     [int] CalculateEnergy() {
-        $p = $this.location
+        $p = $this.position
         $v = $this.velocity
         $potential = [math]::Abs($p.x) + [math]::Abs($p.y) + [math]::Abs($p.z)
         $kinetic = [math]::Abs($v.x) + [math]::Abs($v.y) + [math]::Abs($v.z)
@@ -131,30 +134,24 @@ class moon {
         return $energy
     }
 
-    [string] GetHash () {
-        return "$($this.name)"
+    [string] GetHash() {
+        return "$($this.name),$($this.position.GetHash()),$($this.velocity.GetHash())"
     }
 
-    [string] ToString () {
-        return "$($this.name), $($this.location.ToString()), $($this.velocity.ToString())"
+    [string] ToString() {
+        return "$($this.name), position: $($this.position.ToString()), velocity: $($this.velocity.ToString())"
     }
 }
 
 class system {
     [moon[]] $moons
     [hashtable] $uniquePairs
-    [int] $tick
+    [long] $tick
 
-    system([moon[]] $moons) {
-        $this.moons = $moons
-        $this.tick = 0
-        $this.BuildUniquePairs()
-    }
-
-    system([point[]] $locations) {
+    system([point[]] $positions) {
         $i = 0
-        $this.moons = foreach($loc in $locations) {
-            [moon]::new("moon$i", $loc)
+        $this.moons = foreach($pos in $positions) {
+            [moon]::new("moon-$i", $pos)
             $i++
         }
         $this.tick = 0
@@ -163,10 +160,8 @@ class system {
 
     BuildUniquePairs() {
         $this.uniquePairs = @{}
-        for($i = 0; $i -lt $this.moons.Length; $i++) {
-            $m1 = $this.moons[$i]
-            for($j = 0; $j -lt $this.moons.Length; $j++) {
-                $m2 = $this.moons[$j]
+        foreach($m1 in $this.moons) {
+            foreach($m2 in $this.moons) {
                 $hash1 = "$($m1.name), $($m2.name)"
                 $hash2 = "$($m2.name), $($m1.name)"
                 if(($m1.name -ne $m2.name) -and !$this.uniquePairs.ContainsKey($hash1) -and !$this.uniquePairs.ContainsKey($hash2)) {
@@ -176,9 +171,9 @@ class system {
         }
     }
 
-    ApplyGravityPair([moon] $m1, [moon] $m2, [int] $axis = -1) {
-        $p1 = $m1.location
-        $p2 = $m2.location
+    ApplyGravityPair([moon] $m1, [moon] $m2, [int] $axis) {
+        $p1 = $m1.position
+        $p2 = $m2.position
         
         if($axis -lt 0 -or $axis -eq 0) {
             if($p1.x -lt $p2.x) {
@@ -214,23 +209,28 @@ class system {
         }
     }
 
-    ApplyGravity([int] $axis = -1) {
+    ApplyGravity([int] $axis) {
         foreach($key in $this.uniquePairs.Keys) {
             $pair = $this.uniquePairs[$key]
-            $m1 = $pair.m1
-            $m2 = $pair.m2
-
-            $this.ApplyGravityPair($m1, $m2, $axis)
+            $this.ApplyGravityPair($pair.m1, $pair.m2, $axis)
         }
     }
 
-    ApplyVelocity([int] $axis = -1) {
+    ApplyVelocity([int] $axis) {
         foreach($m in $this.moons) {
             $m.ApplyVelocity($axis)
         }
     }
 
-    DoTick([int] $axis = -1) {
+    [int] CalculateEnergy() {
+        $energy = 0
+        foreach($m in $this.moons) {
+            $energy += $m.CalculateEnergy()
+        }
+        return $energy
+    }
+
+    DoTick([int] $axis) {
         $this.ApplyGravity($axis)
         $this.ApplyVelocity($axis)
         $this.tick++
@@ -244,32 +244,32 @@ class system {
         return $ret -join "`n"
     }
 
-    [string] GetState() {
+    [string] GetHash() {
         $ret = @()
         foreach($m in $this.moons) {
-            $ret += $m.ToString()
+            $ret += $m.GetHash()
         }
-        return $ret -join "`n"
+        return $ret -join ","
     }
+}
 
-    [int] CalculateEnergy() {
-        $energy = 0
-        foreach($m in $this.moons) {
-            $energy += $m.CalculateEnergy()
-        }
-        return $energy
+function gcd {
+    param (
+        [long]$n1,
+        [long]$n2
+    )
+    while($n2 -gt 0) {
+        $temp = $n2
+        $n2 = $n1 % $n2
+        $n1 = $temp
     }
+    return $n1
+}
 
-    [long] gcd([long]$a, [long]$b) {
-        while($b -gt 0) {
-            $temp = $b
-            $b = $a % $b
-            $a = $temp
-        }
-        return $a
-    }
-    
-    [long] lcm([long]$a, [long]$b) {
-        return [math]::floor(($a * $b) / ($this.gcd($a, $b)))
-    }
+function lcm {
+    param (
+        [long]$n1,
+        [long]$n2
+    )
+    return [math]::floor(($n1 * $n2) / (gcd -n1 $n1 -n2 $n2))
 }

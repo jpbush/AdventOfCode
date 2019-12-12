@@ -7,32 +7,32 @@ param(
 
 $content = (Get-Content $InFilename)
 
-$locations = foreach($line in $content) {
+$posistions = foreach($line in $content) {
     [point]::new($line)
 }
 
-$sys = [system]::new($locations)
-
-$initialState = $sys.GetState()
+$sys = [system]::new($posistions)
+Write-Host "Starting state:"
 $sys.ToString() | Write-Host
 Write-Host
 
-$axisMatch = @(0,0,0)
+$firstState = $sys.GetHash()
+$matchAxis = @(0,0,0)
 for($axis = 0; $axis -lt 3; $axis++) {
     Write-Host "Axis: $axis"
-    $tick = 0
+    $sys.tick = 0
     do {
         $sys.DoTick($axis)
-        $currState = $sys.GetState()
-        $tick++
-        if(!($tick % 10000)) {
-            Write-Verbose $tick
+        $currState = $sys.GetHash()
+        if(!($sys.tick % 10000)) {
+            Write-Verbose $sys.tick
         }
-    } while ($currState -ne $initialState) 
-    $axisMatch[$axis] = $tick
-    Write-Host "Axis: $axis, Tick: $tick"
+    } while ($currState -ne $firstState) 
+    $matchAxis[$axis] = $sys.tick
+    Write-Host "Axis: $axis, match tick: $($sys.tick)"
 }
 
-Write-Host "Each axis: $($axisMatch[0]), $($axisMatch[1]), $($axisMatch[2])"
-$lcm = $sys.lcm($sys.lcm([int]$axisMatch[0], [int]$axisMatch[1]), [int]$axisMatch[2])
-Write-Host "Found previous state on tick: $lcm"
+Write-Host "Match on tick: x: $($matchAxis[0]), y: $($matchAxis[1]), z: $($matchAxis[2])"
+
+$matchAll = lcm -n1 (lcm -n1 $matchAxis[0] -n2 $matchAxis[1]) -n2 $matchAxis[2]
+Write-Host "Found previous state on tick: $matchAll"
