@@ -7,16 +7,17 @@ param(
 
 $content = (Get-Content $InFilename)
 
-$locations = foreach($line in $content) {
+$posistions = foreach($line in $content) {
     [point]::new($line)
 }
 
-$sys = [system]::new($locations)
-
+$sys = [system]::new($posistions)
+Write-Host "Starting state:"
 $sys.ToString() | Write-Host
 Write-Host
+
 for($i = 0; $i -lt 1000; $i++) {
-    $sys.DoTick()
+    $sys.DoTick(-1)
     $sys.ToString() | Write-Host
     Write-Host
 }
