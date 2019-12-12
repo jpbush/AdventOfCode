@@ -114,8 +114,18 @@ class moon {
         $this.velocity = [vector]::new(0,0,0)
     }
 
-    ApplyVelocity () {
-        $this.location.AddVector($this.velocity)
+    ApplyVelocity ([int] $axis = -1) {
+        if($axis -lt 0 -or $axis -eq 0) {
+            $this.location.x += $this.velocity.x
+        }
+        
+        if($axis -lt 0 -or $axis -eq 1) {
+            $this.location.y += $this.velocity.y
+        }
+        
+        if($axis -lt 0 -or $axis -eq 2) {
+            $this.location.z += $this.velocity.z
+        }
     }
 
     [int] CalculateEnergy() {
@@ -172,61 +182,76 @@ class system {
         }
     }
 
-    ApplyGravityPair([moon] $m1, [moon] $m2) {
+    ApplyGravityPair([moon] $m1, [moon] $m2, [int] $axis = -1) {
         $p1 = $m1.location
         $p2 = $m2.location
-        if($p1.x -lt $p2.x) {
-            $m1.velocity.x++
-            $m2.velocity.x--
-        }
-        elseif($p1.x -gt $p2.x) {
-            $m1.velocity.x--
-            $m2.velocity.x++
+        
+        if($axis -lt 0 -or $axis -eq 0) {
+            if($p1.x -lt $p2.x) {
+                $m1.velocity.x++
+                $m2.velocity.x--
+            }
+            elseif($p1.x -gt $p2.x) {
+                $m1.velocity.x--
+                $m2.velocity.x++
+            }
         }
         
-        if($p1.y -lt $p2.y) {
-            $m1.velocity.y++
-            $m2.velocity.y--
-        }
-        elseif($p1.y -gt $p2.y) {
-            $m1.velocity.y--
-            $m2.velocity.y++
+        if($axis -lt 0 -or $axis -eq 1) {
+            if($p1.y -lt $p2.y) {
+                $m1.velocity.y++
+                $m2.velocity.y--
+            }
+            elseif($p1.y -gt $p2.y) {
+                $m1.velocity.y--
+                $m2.velocity.y++
+            }
         }
         
-        if($p1.z -lt $p2.z) {
-            $m1.velocity.z++
-            $m2.velocity.z--
-        }
-        elseif($p1.z -gt $p2.z) {
-            $m1.velocity.z--
-            $m2.velocity.z++
+        if($axis -lt 0 -or $axis -eq 2) {
+            if($p1.z -lt $p2.z) {
+                $m1.velocity.z++
+                $m2.velocity.z--
+            }
+            elseif($p1.z -gt $p2.z) {
+                $m1.velocity.z--
+                $m2.velocity.z++
+            }
         }
     }
 
-    ApplyGravity() {
+    ApplyGravity([int] $axis = -1) {
         foreach($key in $this.uniquePairs.Keys) {
             $pair = $this.uniquePairs[$key]
             $m1 = $pair.m1
             $m2 = $pair.m2
 
-            $this.ApplyGravityPair($m1, $m2)
+            $this.ApplyGravityPair($m1, $m2, $axis)
         }
     }
 
-    ApplyVelocity() {
+    ApplyVelocity([int] $axis = -1) {
         foreach($m in $this.moons) {
-            $m.ApplyVelocity()
+            $m.ApplyVelocity($axis)
         }
     }
 
-    DoTick() {
-        $this.ApplyGravity()
-        $this.ApplyVelocity()
+    DoTick([int] $axis = -1) {
+        $this.ApplyGravity($axis)
+        $this.ApplyVelocity($axis)
         $this.tick++
     }
 
     [string] ToString() {
         $ret = @("Tick: $($this.tick)")
+        foreach($m in $this.moons) {
+            $ret += $m.ToString()
+        }
+        return $ret -join "`n"
+    }
+
+    [string] GetState() {
+        $ret = @()
         foreach($m in $this.moons) {
             $ret += $m.ToString()
         }
@@ -239,5 +264,18 @@ class system {
             $energy += $m.CalculateEnergy()
         }
         return $energy
+    }
+
+    [long] gcd([long]$a, [long]$b) {
+        while($b -gt 0) {
+            $temp = $b
+            $b = $a % $b
+            $a = $temp
+        }
+        return $a
+    }
+    
+    [long] lcm([long]$a, [long]$b) {
+        return [math]::floor(($a * $b) / ($this.gcd($a, $b)))
     }
 }
