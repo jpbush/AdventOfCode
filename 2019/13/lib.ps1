@@ -206,7 +206,7 @@ function Run-OpCodes
                 }
                 else {
                     Write-Verbose "ran out of arguments, returning"
-                    $state.exitCode = 0
+                    $state.exitCode = 3
                     $state.InBuff = @()
                     $state.PC = $i
                     return $state
@@ -491,12 +491,20 @@ function Run-OpCodes
 class Game {
     [ProgramState] $state
     [hashtable] $frame
+    [int] $score
+    [int] $blockCount
+    [int] $ballPos
+    [int] $paddlePos
     [int[]] $BoundX
     [int[]] $BoundY
 
     Game([string[]] $GameCodes) {
         $this.state = [ProgramState]::New($GameCodes, 0, 0, @(), @(), 0)
         $this.frame = @{}
+        $this.score = 0
+        $this.blockCount = 1
+        $this.ballPos = 0
+        $this.paddlePos = 0
     }
 
     AddInput([int[]] $InBuff) {
@@ -513,25 +521,46 @@ class Game {
         $this.frame = @{}
         $this.BoundX = @(999, -999)
         $this.BoundY = @(999, -999)
+        $this.blockCount = 0
         $output = $this.GetOutput()
         for($i = 0; $i -lt $output.length; $i+=3) {
             $x = $output[$i]
             $y = $output[$i+1]
-            $tileID = $output[$i+2]
 
-            $tile = switch ($tileID) {
-                0 { " " } # empty
-                1 { "|" } # wall
-                2 { "#" } # block
-                3 { "-" } # horizontal paddle
-                3 { "o" } # ball
+            if($x -eq -1 -and $y -eq 0) {
+                $this.score = $output[$i+2]
             }
-
-            $this.BoundX[0] = [math]::min($this.BoundX[0], $x)
-            $this.BoundX[1] = [math]::max($this.BoundX[1], $x)
-            $this.BoundY[0] = [math]::min($this.BoundY[0], $y)
-            $this.BoundY[1] = [math]::max($this.BoundY[1], $y)
-            $this.frame["$x,$y"] = $tile
+            else {
+                $tileID = $output[$i+2]
+    
+                $tile = switch ($tileID) {
+                     # empty
+                    0 { " " }
+                     # wall
+                    1 { "X" }
+                     # block
+                    2 {
+                        "#"
+                        $this.blockCount++
+                    }
+                     # horizontal paddle
+                    3 {
+                        "-"
+                        $this.paddlePos = $x
+                    }
+                     # ball
+                    4 {
+                        "o"
+                        $this.ballPos = $x
+                    }
+                }
+    
+                $this.BoundX[0] = [math]::min($this.BoundX[0], $x)
+                $this.BoundX[1] = [math]::max($this.BoundX[1], $x)
+                $this.BoundY[0] = [math]::min($this.BoundY[0], $y)
+                $this.BoundY[1] = [math]::max($this.BoundY[1], $y)
+                $this.frame["$x,$y"] = $tile
+            }
         }
     }
 
@@ -547,10 +576,28 @@ class Game {
             }
             Write-Host
         }
+        Write-Host "Score $($this.score)"
     }
 
     RunTick() {
         Run-OpCodes -state $this.state
         $this.BuildFrame()
+    }
+
+    PlayGame() {
+        $this.state.Set(0, 2)
+        while(($this.blockCount -gt 0) -or ($this.state.exitCode -eq 3)) {
+            $input = 0
+            if($this.ballPos -lt $this.paddlePos) {
+                $input = -1
+            }
+            elseif($this.ballPos -gt $this.paddlePos) {
+                $input = 1
+            }
+            $this.state.InBuff = @($input)
+            $this.RunTick()
+            #$this.WriteFrame()
+            Write-Host "Score $($this.score)"
+        }
     }
 }
