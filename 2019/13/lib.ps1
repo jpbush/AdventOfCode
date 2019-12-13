@@ -481,3 +481,76 @@ function Run-OpCodes
     $state.isHalted = $true
     return $state
 }
+
+
+# 0 is an empty tile. No game object appears in this tile.
+# 1 is a wall tile. Walls are indestructible barriers.
+# 2 is a block tile. Blocks can be broken by the ball.
+# 3 is a horizontal paddle tile. The paddle is indestructible.
+# 4 is a ball tile. The ball moves diagonally and bounces off objects.
+class Game {
+    [ProgramState] $state
+    [hashtable] $frame
+    [int[]] $BoundX
+    [int[]] $BoundY
+
+    Game([string[]] $GameCodes) {
+        $this.state = [ProgramState]::New($GameCodes, 0, 0, @(), @(), 0)
+        $this.frame = @{}
+    }
+
+    AddInput([int[]] $InBuff) {
+        $this.state.InBuff += $InBuff
+    }
+
+    [int[]] GetOutput() {
+        $output = $this.state.OutBuff
+        $this.state.OutBuff = @()
+        return $output
+    }
+
+    BuildFrame() {
+        $this.frame = @{}
+        $this.BoundX = @(999, -999)
+        $this.BoundY = @(999, -999)
+        $output = $this.GetOutput()
+        for($i = 0; $i -lt $output.length; $i+=3) {
+            $x = $output[$i]
+            $y = $output[$i+1]
+            $tileID = $output[$i+2]
+
+            $tile = switch ($tileID) {
+                0 { " " } # empty
+                1 { "|" } # wall
+                2 { "#" } # block
+                3 { "-" } # horizontal paddle
+                3 { "o" } # ball
+            }
+
+            $this.BoundX[0] = [math]::min($this.BoundX[0], $x)
+            $this.BoundX[1] = [math]::max($this.BoundX[1], $x)
+            $this.BoundY[0] = [math]::min($this.BoundY[0], $y)
+            $this.BoundY[1] = [math]::max($this.BoundY[1], $y)
+            $this.frame["$x,$y"] = $tile
+        }
+    }
+
+    WriteFrame() {
+        for($y = $this.BoundY[0]; $y -lt $this.BoundY[1]; $y++) {
+            for($x = $this.BoundX[0]; $x -lt $this.BoundX[1]; $x++) {
+                if($this.frame.ContainsKey("$x,$y")) {
+                    Write-Host $this.frame["$x,$y"] -NoNewline
+                }
+                else {
+                    Write-Host " " -NoNewline
+                }
+            }
+            Write-Host
+        }
+    }
+
+    RunTick() {
+        Run-OpCodes -state $this.state
+        $this.BuildFrame()
+    }
+}
