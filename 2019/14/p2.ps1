@@ -9,22 +9,24 @@ $content = (Get-Content $InFilename)
 
 $nano = [nanoFactory]::new($content)
 
-$name = "FUEL"
+$resourceName = "FUEL"
+$resourceProduced = 1
+$maxOre = 1000000000000
 $oreNeeded = 0
 $prevOreNeeded = 0
-$amount = 1000000
-$stepSize = $amount
-$maxOre = 1000000000000
-while(($oreNeeded -lt $maxOre) -and ($stepSize -ge 1)) {
-    $oreNeeded = $nano.getOreCost($name, $amount)
+$stepSize = 1
+while($stepSize -gt 0) {
+    $oreNeeded = $nano.getOreCost($resourceName, $resourceProduced)
+    Write-Host "$oreNeeded ORE needed to produce $resourceProduced $resourceName"
+    
     if($oreNeeded -gt $maxOre) {
-        $amount -= $stepSize
-        $stepSize /= 10
+        $resourceProduced -= $stepSize
         $oreNeeded = $prevOreNeeded
     }
     else {
-        Write-Host "$oreNeeded ORE needed to produce $amount $name"
+        $orePerResource = $oreNeeded / $resourceProduced
+        $stepSize = [math]::floor(($maxOre - $oreNeeded) / 2 / $orePerResource)
+        $resourceProduced += $stepSize
         $prevOreNeeded = $oreNeeded
     }
-    $amount += $stepSize
 }

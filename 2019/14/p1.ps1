@@ -9,8 +9,8 @@ $content = (Get-Content $InFilename)
 
 $nano = [nanoFactory]::new($content)
 
-$name = "FUEL"
-$amount = 1
-$oreNeeded = $nano.getOreCost($name, $amount)
+$resourceName = "FUEL"
+$resourceProduced = 1
+$oreNeeded = $nano.getOreCost($resourceName, $resourceProduced)
 
-Write-Host "$oreNeeded ore needed to produce $amount $name"
+Write-Host "$oreNeeded ORE needed to produce $resourceProduced $resourceName"

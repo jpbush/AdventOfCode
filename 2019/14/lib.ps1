@@ -1,8 +1,8 @@
 class reactant {
     [string] $name
-    [int] $amount
+    [long] $amount
 
-    reactant([string] $name, [int] $amount) {
+    reactant([string] $name, [long] $amount) {
         $this.name = $name
         $this.amount = $amount
     }
@@ -70,66 +70,64 @@ class nanoFactory {
         }
     }
 
-    [long] GetOreCost([string] $name, [int] $amount) {
+    [long] GetOreCost([string] $name, [long] $amount) {
         $need = @{"$name" = $amount}
         $have = @{}
-        $oreNeeded = 0
+        $oreNeed = 0
         while($need.Count -gt 0) {
-            $str = foreach($needName in $need.Keys) {"$($need[$needName]) $needName"}
-            $str = $str -join ", "
-            Write-verbose "Need: $str"
+            $needStr = foreach($outName in $need.Keys) {"$($need[$outName]) $outName"}
+            $needStr = $needStr -join ", "
+            Write-verbose "Need: $needStr"
 
             $newNeed = @{}
-            foreach($needName in $need.Keys) {
-                $amountNeed = $need[$needName]
+            foreach($outName in $need.Keys) {
+                $outNeed = $need[$outName]
 
-                # Use up what we have
-                if($have.ContainsKey($needName)) {
-                    Write-verbose "Have $($have[$needName]) $needName"
+                # Use up what we have first
+                if($have.ContainsKey($outName)) {
+                    $outHave = $have[$outName]
+                    Write-verbose "Have $outHave $outName"
 
-                    $amountHave = $have[$needName]
-                    if($amountNeed -lt $amountHave) {
-                        $have[$needName] -= $amountNeed
-                        $amountNeed = 0
+                    if($outNeed -lt $outHave) {
+                        $have[$outName] -= $outNeed
+                        $outNeed = 0
                     }
-                    elseif($amountNeed -eq $amountHave) {
-                        $have.Remove($needName)
-                        $amountNeed = 0
+                    elseif($outNeed -eq $outHave) {
+                        $have.Remove($outName)
+                        $outNeed = 0
                     }
                     else {
-                        $have.Remove($needName)
-                        $amountNeed -= $amountHave
+                        $have.Remove($outName)
+                        $outNeed -= $outHave
                     }
                 }
 
                 # Figure out what we need to make this need
-                if($amountNeed -gt 0) {
-                    Write-verbose "Still need $amountNeed $needName"
+                if($outNeed -gt 0) {
+                    Write-verbose "Still need $outNeed $outName"
 
-                    $reaction = $this.reactions[$needName]
-                    $numReactions = [math]::Ceiling($amountNeed / $reaction.output.amount)
-                    $produced = $reaction.output.amount * $numReactions
-                    $have[$needName] = $produced - $amountNeed
+                    $reaction = $this.reactions[$outName]
+                    $reactionMultiplier = [math]::Ceiling($outNeed / $reaction.output.amount)
+                    $outProduced = $reaction.output.amount * $reactionMultiplier
+                    $have[$outName] = $outProduced - $outNeed
 
                     foreach($input in $reaction.inputs) {
-                        $inputTotal = $input.amount * $numReactions
+                        $inputNeed = $input.amount * $reactionMultiplier
+                        Write-Verbose "Adding need $inputNeed $($input.name) for $outProduced $outName"
                         if($input.name -eq "ORE") {
-                            Write-Verbose "ORE $inputTotal for $produced $needName"
-                            $oreNeeded += $input.amount * $numReactions
+                            $oreNeed += $inputNeed
                         }
                         else {
-                            Write-Verbose "Adding need $inputTotal $($input.name) for $produced $needName"
-                            $newNeed[$input.name] += $input.amount * $numReactions
+                            $newNeed[$input.name] += $inputNeed
                         }
                     }
                 }
             }
 
-            # merge needs
             $need = $newNeed
         }
 
-        return $oreNeeded
+        return $oreNeed
     }
 
     [string] GetHash() 
