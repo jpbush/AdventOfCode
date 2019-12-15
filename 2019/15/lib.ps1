@@ -37,10 +37,6 @@ class point {
         return ($this.x -eq $x) -and ($this.y -eq $y)
     }
 
-    [bool] Equals([point] $p) {
-        return $this.Equals($p.x, $p.y)
-    }
-
     [string] GetHash() 
     {
         return "$($this.x),$($this.y)"
@@ -648,7 +644,7 @@ class DroidController {
         for($y = $this.droid.BoundY[0]; $y -lt $this.droid.BoundY[1]; $y++) {
             for($x = $this.droid.BoundX[0]; $x -lt $this.droid.BoundX[1]; $x++) {
                 $currLocation = [point]::new($x, $y)
-                if($currLocation.Equals($this.droid.Location)) {
+                if($currLocation.Equals($x, $y)) {
                     Write-Host "@" -NoNewline
                 }
                 elseif($this.map.ContainsKey($currLocation.GetHash())) {
@@ -665,7 +661,7 @@ class DroidController {
     StartDroidController() {
         $userInput = '0'
         while($userInput -ne 'q') {
-            $userInput = Read-Host "What next (? for help):"
+            $userInput = Read-Host "What next (? for help)"
 
             switch($userInput) {
                 'u' { $this.droid.Move(1); break }
