@@ -668,8 +668,9 @@ class DroidController {
                 'd' { $this.droid.Move(2); break }
                 'l' { $this.droid.Move(3); break }
                 'r' { $this.droid.Move(4); break }
+                'p' { $this.WriteMap(); break }
                 '?' {
-                    Write-Host "u : up, d : down, l : left, r : right, ? : help, q : quit"
+                    Write-Host "u : up, d : down, l : left, r : right, p : print map, ? : help, q : quit"
                     break
                  }
                  'q' { return }
