@@ -838,7 +838,6 @@ class DroidController {
                 }
                 2 {
                     Write-Host "Found Target at $($this.droid.Location.GetHash())"
-                    Start-sleep 3
                     $foundGoal = $true
                     $this.goalPoint = [point]::new($this.droid.Location)
                     break
@@ -864,14 +863,11 @@ class DroidController {
         return $this.goalPoint
     }
 
-    [int] BFS([point] $start) {
-        $start = [point]::new(-20, -16)
-        Write-Host "Start Pos: $($start.GetHash())"
-        Start-Sleep 5
+    [int] BFS([point] $startPos) {
         $q = [System.Collections.Queue]::new()
-        $q.Enqueue(@{pos = $start; depth = 0})
+        $q.Enqueue(@{pos = $startPos; depth = 0})
         $seen = @{}
-        $seen[$start.GetHash()] = $true
+        $seen[$startPos.GetHash()] = $true
         $maxDepth = 0
         while($q.Count) {
             $item = $q.Dequeue()
@@ -904,25 +900,7 @@ class DroidController {
                     break
                 }
                 2 {
-                    $this.droid.map[$item.pos.GetHash()].tokenVisual = "X"
-                    # add children
-                    $next = [point]::new($item.pos.x, $item.pos.y - 1)
-                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
-                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
-                    }
-                    $next = [point]::new($item.pos.x, $item.pos.y + 1)
-                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
-                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
-                    }
-                    $next = [point]::new($item.pos.x - 1, $item.pos.y)
-                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
-                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
-                    }
-                    $next = [point]::new($item.pos.x + 1, $item.pos.y)
-                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
-                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
-                    }
-                    break
+                    return $item.depth
                 }
             }
         }
@@ -938,10 +916,8 @@ class DroidController {
     [int] CalculateOxygenFillTime() {
         $this.goalPoint = $this.BuildMap()
         $this.droid.map[$this.goalPoint.GetHash()] = [tile]::new($this.goalPoint.x, $this.goalPoint.y, 1)
-        Write-Host "goalPoint: $($this.goalPoint.GetHash())"
-        Start-Sleep 5
-        # $result = $this.BFS($this.goalPoint)
-        return 0
+        $result = $this.BFS($this.goalPoint)
+        return $result
     }
 
     StartDroidController() {
