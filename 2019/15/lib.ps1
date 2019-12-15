@@ -61,6 +61,12 @@ class tile {
             0 { "#"; break }
             1 { "."; break }
             2 { "*"; break }
+            3 { "O"; break }
+            10 { "^"; break }
+            11 { "v"; break }
+            12 { "<"; break }
+            13 { ">"; break }
+            20{ "X"; break }
             default { throw "Invalid tokenID: $tokenID"; break }
         }
     }
@@ -596,8 +602,8 @@ class Droid {
     # 0: The repair droid hit a wall. Its position has not changed.
     # 1: The repair droid has moved one step in the requested direction.
     # 2: The repair droid has moved one step in the requested direction; its new position is the location of the oxygen system.
-    [int] Move([int] $direction) {
-
+    [int] Move([int] $direction, [bool] $clear) {
+        Write-Verbose "Move $direction"
         $this.AddInput($direction)
         Run-OpCodes -state $this.Brain
 
@@ -642,6 +648,10 @@ class Droid {
         return $status
     }
 
+    [int] Move([int] $direction) {
+        return $this.Move($direction, $false)
+    }
+
     Look() {
         $this.LookNS()
         $this.LookEW()
@@ -668,6 +678,7 @@ class Droid {
 
 class DroidController {
     [Droid] $droid
+    [point] $goalPoint = $null
 
     DroidController([string[]] $droidCodes) {
         $this.droid = [Droid]::New($droidCodes)
@@ -710,28 +721,72 @@ class DroidController {
         }
     }
 
-    [int] Search([int] $direction, [int] $depth) {
-        Write-Verbose "Search $direction"
-        # if($depth -gt 65) { $Global:sleepTime = 1000 }
-        Start-Sleep -Milliseconds $Global:sleepTime
-        $status = $this.droid.Move($direction)
-        if(!($depth % 50)) {
-            $this.WriteMap()
-        }
-        Write-Host "depth $depth"
-        switch($status) {
-            0 { return 0 }
+    [point] BuildMap() {
+        $stack = [System.Collections.Stack]::new()
+        $foundGoal = $false
+        $direction = 1
+        $ittr = 0
+        $this.goalPoint = $null
+        do {
+            $ittr++
+            $status = $this.droid.Move($direction)
+            $stack.Push($direction)
+            Start-Sleep -Milliseconds $Global:sleepTime
+            if(!($stack.Count % 100)) { $this.WriteMap() }
+            # $this.WriteMap()
+            Write-Verbose "Depth $($stack.Count)"
+            switch($status) {
+                0 {
+                    Write-Verbose "Wall"
+                    $direction = $stack.Pop()
+                    $directionCopy = $direction
+                    $foundClearPath = $false
+                    for($i = 0; $i -lt 4; $i++) {
+                        $direction = [math]::max(($direction + 1) % 5, 1)
+                        $move = [point]::new(0,0)
+                        switch ($direction) {
+                            1 { $move.y = -1; break }
+                            2 { $move.y = 1; break }
+                            3 { $move.x = -1; break }
+                            4 { $move.x = 1; break }
+                            default { throw "invalid direction $_"; break  }
+                        }
+                        $move.Add($this.droid.Location)
+                        if(!$this.droid.map.ContainsKey($move.GetHash())) {
+                            Write-Verbose "send it"
+                            $foundClearPath = $true
+                            break
+                        }
+                        else {
+                            Write-Verbose "already been there"
+                        }
+                    }
+
+                    if(!$foundClearPath) {
+                        Write-Verbose "Didn't stuck in a corner, backing up"
+                        $direction = $stack.Pop()
+                        switch($direction) {
+                            1 { $this.droid.Move(2, $true); break }
+                            2 { $this.droid.Move(1, $true); break }
+                            3 { $this.droid.Move(4, $true); break }
+                            4 { $this.droid.Move(3, $true); break }
+                        }
+                        $direction = [math]::max(($direction + 1) % 5, 1)
+                    }
+
+                    Write-Verbose "Try $direction next"
+                    break
+            }
             1 {
+                    Write-Verbose "Not Wall"
                 # up
                 $nextLoc = [point]::new($this.droid.Location.x, ($this.droid.Location.y - 1))
                 Write-Verbose "Try up : $($nextLoc.ToString())"
                 if(!$this.droid.map.ContainsKey($nextLoc.GetHash())) {
                     Write-Verbose "send it"
-                    $result = $this.Search(1, $depth + 1)
-                    if($result -gt 0) {
-                        return $result + 1
+                        $direction = 1
+                        break
                     }
-                }
                 else {
                     Write-Verbose "already been there"
                 }
@@ -740,11 +795,9 @@ class DroidController {
                 Write-Verbose "Try down : $($nextLoc.ToString())"
                 if(!$this.droid.map.ContainsKey($nextLoc.GetHash())) {
                     Write-Verbose "send it"
-                    $result = $this.Search(2, $depth + 1)
-                    if($result -gt 0) {
-                        return $result + 1
+                        $direction = 2
+                        break
                     }
-                }
                 else {
                     Write-Verbose "already been there"
                 }
@@ -753,10 +806,8 @@ class DroidController {
                 Write-Verbose "Try left : $($nextLoc.ToString())"
                 if(!$this.droid.map.ContainsKey($nextLoc.GetHash())) {
                     Write-Verbose "send it"
-                    $result = $this.Search(3, $depth + 1)
-                    if($result -gt 0) {
-                        return $result + 1
-                    }
+                        $direction = 3
+                        break
                 }
                 else {
                     Write-Verbose "already been there"
@@ -766,38 +817,130 @@ class DroidController {
                 Write-Verbose "Try right : $($nextLoc.ToString())"
                 if(!$this.droid.map.ContainsKey($nextLoc.GetHash())) {
                     Write-Verbose "send it"
-                    $result = $this.Search(4, $depth + 1)
-                    if($result -gt 0) {
-                        return $result + 1
-                    }
+                        $direction = 4
+                        break
                 }
                 else {
                     Write-Verbose "already been there"
                 }
-                Write-Host "Didn't find it, backing up"
+                Write-Verbose "Didn't find it, backing up"
                 # throw "Didn't find it, backing up"
                 # backup
+                    $direction = $stack.Pop()
                 switch($direction) {
+                        1 { $this.droid.Move(2, $true); break }
+                        2 { $this.droid.Move(1, $true); break }
+                        3 { $this.droid.Move(4, $true); break }
+                        4 { $this.droid.Move(3, $true); break }
+                    }
+                    $direction = [math]::max(($direction + 1) % 5, 1)
+                    break
+                }
+                2 {
+                    Write-Host "Found Target at $($this.droid.Location.GetHash())"
+                    Start-sleep 3
+                    $foundGoal = $true
+                    $this.goalPoint = [point]::new($this.droid.Location)
+                    break
+                }
+                default { throw "invalid status $status" }
+            }
+        } while($stack.Count -gt 0 -or $ittr -lt 2)
+
+        $stack2 = [System.Collections.Stack]::new($stack)
+        While($stack2.Count) {
+            $this.droid.map[$this.droid.Location.GetHash()] = [tile]::new($this.location.x, $this.location.y, 3)
+            $direction = $stack2.Pop()
+            switch($direction) {
                     1 { $this.droid.Move(2); break }
                     2 { $this.droid.Move(1); break }
                     3 { $this.droid.Move(4); break }
                     4 { $this.droid.Move(3); break }
                 }
-                return 0
-            }
-            2 { return 1 }
-            default { throw "invalid status $status" }
+            Write-Verbose "Depth $($stack2.Count)"
+            $this.WriteMap()
         }
-        return -999
+
+        return $this.goalPoint
+    }
+
+    [int] BFS([point] $start) {
+        $start = [point]::new(-20, -16)
+        Write-Host "Start Pos: $($start.GetHash())"
+        Start-Sleep 5
+        $q = [System.Collections.Queue]::new()
+        $q.Enqueue(@{pos = $start; depth = 0})
+        $seen = @{}
+        $seen[$start.GetHash()] = $true
+        $maxDepth = 0
+        while($q.Count) {
+            $item = $q.Dequeue()
+            $maxDepth = [math]::max($item.depth, $maxDepth)
+            $seen[$item.pos.GetHash()] = $true
+            $tokenID = $this.droid.map[$item.pos.GetHash()].tokenID
+            if(!($item.depth % 10)) { $this.WriteMap() }
+            # $this.WriteMap()
+            switch($tokenID) {
+                0 { break }
+                1 {
+                    $this.droid.map[$item.pos.GetHash()].tokenVisual = "X"
+                    # add children
+                    $next = [point]::new($item.pos.x, $item.pos.y - 1)
+                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
+                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
+                    }
+                    $next = [point]::new($item.pos.x, $item.pos.y + 1)
+                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
+                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
+                    }
+                    $next = [point]::new($item.pos.x - 1, $item.pos.y)
+                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
+                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
+                    }
+                    $next = [point]::new($item.pos.x + 1, $item.pos.y)
+                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
+                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
+                    }
+                    break
+                }
+                2 {
+                    $this.droid.map[$item.pos.GetHash()].tokenVisual = "X"
+                    # add children
+                    $next = [point]::new($item.pos.x, $item.pos.y - 1)
+                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
+                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
+                    }
+                    $next = [point]::new($item.pos.x, $item.pos.y + 1)
+                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
+                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
+                    }
+                    $next = [point]::new($item.pos.x - 1, $item.pos.y)
+                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
+                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
+                    }
+                    $next = [point]::new($item.pos.x + 1, $item.pos.y)
+                    if(!$seen[$next.GetHash()] -and $this.droid.map.ContainsKey($next.GetHash()) -and ($this.droid.map[$next.GetHash()].tokenID -ne 0)) {
+                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
+                    }
+                    break
+                }
+            }
+        }
+        return $maxDepth
     }
 
     [int] StartDroidAuto() {
-        for($direction = 1; $direction -le 4; $direction++) {
-            $result = $this.Search($direction, 1)
-            if($result -gt 0) {
-                return $result + 1
-            }
-        }
+        $result = $this.BuildMap()
+        $result = $this.BFS([point]::new(0,0))
+        return $result
+    }
+
+    [int] CalculateOxygenFillTime() {
+        $this.goalPoint = $this.BuildMap()
+        $this.droid.map[$this.goalPoint.GetHash()] = [tile]::new($this.goalPoint.x, $this.goalPoint.y, 1)
+        Write-Host "goalPoint: $($this.goalPoint.GetHash())"
+        Start-Sleep 5
+        # $result = $this.BFS($this.goalPoint)
         return 0
     }
 
