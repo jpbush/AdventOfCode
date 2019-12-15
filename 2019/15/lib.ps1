@@ -1,3 +1,49 @@
+
+class point {
+    [int]$x = 0
+    [int]$y = 0
+
+    point() { }
+
+    point([int] $x, [int] $y) {
+        $this.Set($x, $y)
+    }
+
+    point([point] $p) {
+        $this.Set($p.x, $p.y)
+    }
+
+    point ([string] $str) 
+    {
+        $strArr = $str.split(',')
+        $this.Set($strArr[0], $strArr[1])
+    }
+
+    Set([int] $x, [int] $y) {
+        $this.x = $x
+        $this.y = $y
+    }
+
+    Add([int] $x, [int] $y) {
+        $this.x += $x
+        $this.y += $y
+    }
+
+    Add([point] $p) {
+        $this.Add($p.x, $p.y)
+    }
+
+    [string] GetHash() 
+    {
+        return "$($this.x),$($this.y)"
+    }
+
+    [string] ToString() 
+    {
+        return "x=$($this.x), y=$($this.y)"
+    }
+}
+
 class ProgramState {
     [string[]] $codes
     [long] $PC
