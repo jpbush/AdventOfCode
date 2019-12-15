@@ -1,3 +1,4 @@
+$Global:sleepTime = 0
 
 class point {
     [int]$x = 0
@@ -670,41 +671,134 @@ class DroidController {
 
     DroidController([string[]] $droidCodes) {
         $this.droid = [Droid]::New($droidCodes)
-        $this.droid.Look()
+        # $this.droid.Look()
+        Clear-Host
         $this.WriteMap()
     }
 
     WriteMap() {
-        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { Write-Host "+" -NoNewline }
-        Write-Host
+        $frame = [System.Collections.ArrayList]@()
+        $frame.Add([System.Collections.ArrayList]@())
+        $frameY = 0
+        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { $frame[$frameY].Add("+") }
         for($y = $this.droid.BoundY[0]; $y -le $this.droid.BoundY[1]; $y++) {
-            Write-Host "+" -NoNewline
+            $frame.Add([System.Collections.ArrayList]@())
+            $frameY++
+            $frame[$frameY].Add("+")
             for($x = $this.droid.BoundX[0]; $x -le $this.droid.BoundX[1]; $x++) {
                 $currLocation = [point]::new($x, $y)
                 if(($this.droid.location.x -eq $x) -and ($this.droid.location.y -eq $y)) {
-                    Write-Host "@" -NoNewline -ForegroundColor Yellow
+                    $frame[$frameY].Add("@")
                 }
                 elseif($this.droid.map.ContainsKey($currLocation.GetHash())) {
-                    $tokenID = $this.droid.map[$currLocation.GetHash()].tokenID
-                    if($tokenID -eq 2) {
-                        Write-Host $this.droid.map[$currLocation.GetHash()].tokenVisual -NoNewline -ForegroundColor Green
-                    }
-                    if($tokenID -eq 1) {
-                        Write-Host $this.droid.map[$currLocation.GetHash()].tokenVisual -NoNewline -ForegroundColor DarkGray
-                    }
-                    else {
-                        Write-Host $this.droid.map[$currLocation.GetHash()].tokenVisual -NoNewline -ForegroundColor Gray
+                    $frame[$frameY].Add($this.droid.map[$currLocation.GetHash()].tokenVisual)
+                }
+                else {
+                    $frame[$frameY].Add(" ")
+                }
+            }
+            $frame[$frameY].Add("+")
+        }
+        
+        $frame.Add([System.Collections.ArrayList]@())
+        $frameY++
+        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { $frame[$frameY].Add("+") }
+        
+        Clear-Host
+        foreach($line in $frame) {
+            Write-Host ($line -join "")
+        }
+    }
+
+    [int] Search([int] $direction, [int] $depth) {
+        Write-Verbose "Search $direction"
+        # if($depth -gt 65) { $Global:sleepTime = 1000 }
+        Start-Sleep -Milliseconds $Global:sleepTime
+        $status = $this.droid.Move($direction)
+        if(!($depth % 50)) {
+            $this.WriteMap()
+        }
+        Write-Host "depth $depth"
+        switch($status) {
+            0 { return 0 }
+            1 {
+                # up
+                $nextLoc = [point]::new($this.droid.Location.x, ($this.droid.Location.y - 1))
+                Write-Verbose "Try up : $($nextLoc.ToString())"
+                if(!$this.droid.map.ContainsKey($nextLoc.GetHash())) {
+                    Write-Verbose "send it"
+                    $result = $this.Search(1, $depth + 1)
+                    if($result -gt 0) {
+                        return $result + 1
                     }
                 }
                 else {
-                    Write-Host " " -NoNewline
+                    Write-Verbose "already been there"
                 }
+                # down
+                $nextLoc = [point]::new($this.droid.Location.x, ($this.droid.Location.y + 1))
+                Write-Verbose "Try down : $($nextLoc.ToString())"
+                if(!$this.droid.map.ContainsKey($nextLoc.GetHash())) {
+                    Write-Verbose "send it"
+                    $result = $this.Search(2, $depth + 1)
+                    if($result -gt 0) {
+                        return $result + 1
+                    }
+                }
+                else {
+                    Write-Verbose "already been there"
+                }
+                # left
+                $nextLoc = [point]::new(($this.droid.Location.x - 1), $this.droid.Location.y)
+                Write-Verbose "Try left : $($nextLoc.ToString())"
+                if(!$this.droid.map.ContainsKey($nextLoc.GetHash())) {
+                    Write-Verbose "send it"
+                    $result = $this.Search(3, $depth + 1)
+                    if($result -gt 0) {
+                        return $result + 1
+                    }
+                }
+                else {
+                    Write-Verbose "already been there"
+                }
+                # right
+                $nextLoc = [point]::new(($this.droid.Location.x + 1), $this.droid.Location.y)
+                Write-Verbose "Try right : $($nextLoc.ToString())"
+                if(!$this.droid.map.ContainsKey($nextLoc.GetHash())) {
+                    Write-Verbose "send it"
+                    $result = $this.Search(4, $depth + 1)
+                    if($result -gt 0) {
+                        return $result + 1
+                    }
+                }
+                else {
+                    Write-Verbose "already been there"
+                }
+                Write-Host "Didn't find it, backing up"
+                # throw "Didn't find it, backing up"
+                # backup
+                switch($direction) {
+                    1 { $this.droid.Move(2); break }
+                    2 { $this.droid.Move(1); break }
+                    3 { $this.droid.Move(4); break }
+                    4 { $this.droid.Move(3); break }
+                }
+                return 0
             }
-            Write-Host "+" -NoNewline
-            Write-Host
+            2 { return 1 }
+            default { throw "invalid status $status" }
         }
-        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { Write-Host "+" -NoNewline }
-        Write-Host
+        return -999
+    }
+
+    [int] StartDroidAuto() {
+        for($direction = 1; $direction -le 4; $direction++) {
+            $result = $this.Search($direction, 1)
+            if($result -gt 0) {
+                return $result + 1
+            }
+        }
+        return 0
     }
 
     StartDroidController() {

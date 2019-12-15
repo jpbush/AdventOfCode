@@ -8,4 +8,6 @@ param(
 $content = (Get-Content $InFilename).Split(',')
 
 $controller = [DroidController]::new($content)
-$controller.StartDroidController()
+# $controller.StartDroidController()
+$result = $controller.StartDroidAuto()
+Write-Host "Took $result moves to find the end"
