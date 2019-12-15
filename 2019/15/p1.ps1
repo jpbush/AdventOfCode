@@ -5,7 +5,7 @@ param(
 
 . $PSScriptRoot/lib.ps1
 
-$content = (Get-Content $InFilename)
+$content = (Get-Content $InFilename).Split(',')
 
 $controller = [DroidController]::new($content)
 $controller.StartDroidController()

@@ -59,7 +59,7 @@ class tile {
         $this.tokenVisual = switch($tokenID) {
             0 { "#"; break }
             1 { "."; break }
-            2 { "+"; break }
+            2 { "*"; break }
             default { throw "Invalid tokenID: $tokenID"; break }
         }
     }
@@ -560,8 +560,9 @@ class Droid {
         $this.Brain = [ProgramState]::New($BrainCodes, 0, 0, @(), @(), 0)
         $this.Location = [point]::New(0,0)
         $this.map = @{}
-        $this.BoundX = @(999, -999)
-        $this.BoundY = @(999, -999)
+        $this.map[$this.location.GetHash()] = [tile]::new(0,0,1)
+        $this.BoundX = @(0, 0)
+        $this.BoundY = @(0, 0)
     }
 
     AddInput([long[]] $InBuff) {
@@ -575,7 +576,8 @@ class Droid {
     }
 
     UpdateMap([int] $tokenID, [int] $x, [int] $y) {
-        $this.map[$this.location.GetHash()] = [tile]::new($x, $y, $tokenID)
+        $updateLoc = [point]::new($x, $y)
+        $this.map[$updateLoc.GetHash()] = [tile]::new($x, $y, $tokenID)
         $this.BoundX[0] = [math]::min($this.BoundX[0], $x)
         $this.BoundX[1] = [math]::max($this.BoundX[1], $x)
         $this.BoundY[0] = [math]::min($this.BoundY[0], $y)
@@ -617,19 +619,49 @@ class Droid {
             0 {
                 $x = $this.Location.x + $move.x
                 $y = $this.Location.y + $move.y
-                UpdateMap(0, $x, $y)
+                Write-Verbose "Wall at $x, $y, robot at $($this.Location.GetHash())"
+                $this.UpdateMap(0, $x, $y)
+                break
             }
             1 {
                 $this.Location.Add($move)
-                UpdateMap(1, $this.Location.x, $this.Location.y)
+                $this.UpdateMap(1, $this.Location.x, $this.Location.y)
+                break
             }
             2 {
                 $this.Location.Add($move)
-                UpdateMap(2, $this.Location.x, $this.Location.y)
+                $this.UpdateMap(2, $this.Location.x, $this.Location.y)
+                break
+            }
+            default {
+                throw "invalid status $status"
             }
         }
 
         return $status
+    }
+
+    Look() {
+        $this.LookNS()
+        $this.LookEW()
+    }
+
+    LookNS() {
+        if($this.Move(1) -gt 0) {
+            $this.Move(2)
+        }
+        if($this.Move(2) -gt 0) {
+            $this.Move(1)
+        }
+    }
+
+    LookEW() {
+        if($this.Move(3) -gt 0) {
+            $this.Move(4)
+        }
+        if($this.Move(4) -gt 0) {
+            $this.Move(3)
+        }
     }
 }
 
@@ -638,48 +670,84 @@ class DroidController {
 
     DroidController([string[]] $droidCodes) {
         $this.droid = [Droid]::New($droidCodes)
+        $this.droid.Look()
+        $this.WriteMap()
     }
 
     WriteMap() {
-        for($y = $this.droid.BoundY[0]; $y -lt $this.droid.BoundY[1]; $y++) {
-            for($x = $this.droid.BoundX[0]; $x -lt $this.droid.BoundX[1]; $x++) {
+        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { Write-Host "+" -NoNewline }
+        Write-Host
+        for($y = $this.droid.BoundY[0]; $y -le $this.droid.BoundY[1]; $y++) {
+            Write-Host "+" -NoNewline
+            for($x = $this.droid.BoundX[0]; $x -le $this.droid.BoundX[1]; $x++) {
                 $currLocation = [point]::new($x, $y)
-                if($currLocation.Equals($x, $y)) {
-                    Write-Host "@" -NoNewline
+                if(($this.droid.location.x -eq $x) -and ($this.droid.location.y -eq $y)) {
+                    Write-Host "@" -NoNewline -ForegroundColor Yellow
                 }
-                elseif($this.map.ContainsKey($currLocation.GetHash())) {
-                    Write-Host $this.map[$currLocation.GetHash()].tokenVisual -NoNewline
+                elseif($this.droid.map.ContainsKey($currLocation.GetHash())) {
+                    $tokenID = $this.droid.map[$currLocation.GetHash()].tokenID
+                    if($tokenID -eq 2) {
+                        Write-Host $this.droid.map[$currLocation.GetHash()].tokenVisual -NoNewline -ForegroundColor Green
+                    }
+                    if($tokenID -eq 1) {
+                        Write-Host $this.droid.map[$currLocation.GetHash()].tokenVisual -NoNewline -ForegroundColor DarkGray
+                    }
+                    else {
+                        Write-Host $this.droid.map[$currLocation.GetHash()].tokenVisual -NoNewline -ForegroundColor Gray
+                    }
                 }
                 else {
                     Write-Host " " -NoNewline
                 }
             }
+            Write-Host "+" -NoNewline
             Write-Host
         }
+        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { Write-Host "+" -NoNewline }
+        Write-Host
     }
 
     StartDroidController() {
         $userInput = '0'
         while($userInput -ne 'q') {
             $userInput = Read-Host "What next (? for help)"
-
-            switch($userInput) {
-                'u' { $this.droid.Move(1); break }
-                'd' { $this.droid.Move(2); break }
-                'l' { $this.droid.Move(3); break }
-                'r' { $this.droid.Move(4); break }
-                'p' { $this.WriteMap(); break }
-                '?' {
-                    Write-Host "u : up, d : down, l : left, r : right, p : print map, ? : help, q : quit"
-                    break
-                 }
-                 'q' { return }
-                 default {
-                    Write-Host "invalid input, q for help"
-                    break
-                 }
+            for($i = 0; $i -lt $userInput.Length; $i++) {
+                $input = $userInput[$i]
+                switch($input) {
+                    'w' {
+                        $this.droid.Move(1)
+                        $this.droid.LookEW()
+                        break
+                    }
+                    's' {
+                        $this.droid.Move(2)
+                        $this.droid.LookEW()
+                        break
+                    }
+                    'a' {
+                        $this.droid.Move(3)
+                        $this.droid.LookNS()
+                        break
+                    }
+                    'd' {
+                        $this.droid.Move(4)
+                        $this.droid.LookNS()
+                        break
+                    }
+                    'e' { $this.droid.Look(); break }
+                    'p' { break }
+                    '?' {
+                        Write-Host "w : up, s : down, a : left, d : right, e : look around, p : print map, ? : help, q : quit"
+                        break
+                     }
+                     'q' { return }
+                     default {
+                        Write-Host "invalid input, q for help"
+                        break
+                     }
+                }
             }
-
+            Clear-Host
             $this.WriteMap()
         }
     }
