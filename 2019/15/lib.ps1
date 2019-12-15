@@ -33,6 +33,14 @@ class point {
         $this.Add($p.x, $p.y)
     }
 
+    [bool] Equals([int] $x, [int] $y) {
+        return ($this.x -eq $x) -and ($this.y -eq $y)
+    }
+
+    [bool] Equals([point] $p) {
+        return $this.Equals($p.x, $p.y)
+    }
+
     [string] GetHash() 
     {
         return "$($this.x),$($this.y)"
@@ -41,6 +49,23 @@ class point {
     [string] ToString() 
     {
         return "x=$($this.x), y=$($this.y)"
+    }
+}
+
+class tile {
+    [point] $location
+    [int] $tokenID
+    [char] $tokenVisual
+
+    tile([int] $x, [int] $y, $tokenID) {
+        $this.location = [point]::new($x, $y)
+        $this.tokenID = $tokenID
+        $this.tokenVisual = switch($tokenID) {
+            0 { "#"; break }
+            1 { "."; break }
+            2 { "+"; break }
+            default { throw "Invalid tokenID: $tokenID"; break }
+        }
     }
 }
 
@@ -528,17 +553,19 @@ function Run-OpCodes
     return $state
 }
 
-class Robot {
+class Droid {
     [ProgramState] $Brain
     [point] $Location
-    [string] $direction
-    [hashtable] $PastSpots
+    [hashtable] $map
+    [int[]] $BoundX
+    [int[]] $BoundY
 
-    Robot([string[]] $BrainCodes) {
+    Droid([string[]] $BrainCodes) {
         $this.Brain = [ProgramState]::New($BrainCodes, 0, 0, @(), @(), 0)
         $this.Location = [point]::New(0,0)
-        $this.direction = "u"
-        $this.PastSpots = @{}
+        $this.map = @{}
+        $this.BoundX = @(999, -999)
+        $this.BoundY = @(999, -999)
     }
 
     AddInput([long[]] $InBuff) {
@@ -551,187 +578,81 @@ class Robot {
         return $output
     }
 
-    [long[]] BuildInput() {
-        $currColor = 0
-        if($this.PastSpots.ContainsKey($this.Location.Hash())) {
-            $currColor = $this.PastSpots[$this.Location.Hash()].Color
-        }
-        $input = @([long]$currColor)
-        return $input
+    UpdateMap([int] $tokenID, [int] $x, [int] $y) {
+        $this.map[$location.GetHash()] = [tile]::new($x, $y, $tokenID)
+        $this.BoundX[0] = [math]::min($this.BoundX[0], $x)
+        $this.BoundX[1] = [math]::max($this.BoundX[1], $x)
+        $this.BoundY[0] = [math]::min($this.BoundY[0], $y)
+        $this.BoundY[1] = [math]::max($this.BoundY[1], $y)
     }
 
-    PaintSpot([int]$Color) {
-        $this.PastSpots[$this.Location.Hash()] = @{Color = $Color; Point = [point]::new($this.Location)}
-    }
+    # 1. Accept a movement command via an input instruction.
+    # 2. Send the movement command to the repair droid.
+    # 3. Wait for the repair droid to finish the movement operation.
+    # 4. Report on the status of the repair droid via an output instruction.
+    # 
+    # Only four movement commands are understood: north (1), south (2), west (3), and east (4). Any other command is invalid.
+    # 
+    # The repair droid can reply with any of the following status codes:
+    # 0: The repair droid hit a wall. Its position has not changed.
+    # 1: The repair droid has moved one step in the requested direction.
+    # 2: The repair droid has moved one step in the requested direction; its new position is the location of the oxygen system.
+    [int] Move([int] $direction) {
 
-    Rotate([int]$DirectionToTurn) {
-        switch ($DirectionToTurn) {
-            # left
-            0 {
-                switch ($this.direction) {
-                    "u" {
-                        $this.direction = "l"
-                    }
-                    "d" {
-                        $this.direction = "r"
-                    }
-                    "l" {
-                        $this.direction = "d"
-                    }
-                    "r" {
-                        $this.direction = "u"
-                    }
-                    default {
-                        throw "invalid direction $_"
-                    }
-                }
-            }
-            # right
-            1 {
-                switch ($this.direction) {
-                    "u" {
-                        $this.direction = "r"
-                    }
-                    "d" {
-                        $this.direction = "l"
-                    }
-                    "l" {
-                        $this.direction = "u"
-                    }
-                    "r" {
-                        $this.direction = "d"
-                    }
-                    default {
-                        throw "invalid direction $_"
-                    }
-                }
-            }
-            default {
-                throw "Invalid direction to turn $_"
-            }
-        }
-    }
-
-    Move() {
-        switch ($this.direction) {
-            "u" {
-                $this.Location.y--
-            }
-            "d" {
-                $this.Location.y++
-            }
-            "l" {
-                $this.Location.x--
-            }
-            "r" {
-                $this.Location.x++
-            }
-            default {
-                throw "invalid direction $_"
-            }
-        }
-    }
-
-    RunTick() {
-        $input = $this.BuildInput()
-        $this.AddInput($input)
-        
+        $this.AddInput($direction)
         Run-OpCodes -state $this.Brain
+
         $output = $this.GetOutput()
-        if($output.Length -ne 2) {
-            throw "Output length was not 2"
+        if($output.Length -ne 1) {
+            throw "No output was returned :("
+        }
+        $status = $output[0]
+
+        $move = [point]::new(0,0)
+        switch ($direction) {
+            1 { $move.y = -1; break }
+            2 { $move.y = 1; break }
+            3 { $move.x = -1; break }
+            4 { $move.x = 1; break }
+            default { throw "invalid direction $_"; break  }
         }
 
-        Write-Verbose "Painting: ($($this.Location.Hash())), color: $($output[0]))"
-        $this.PaintSpot($output[0])
-        Write-Verbose "Turning $($output[1]))"
-        $this.Rotate($output[1])
-        $this.Move()
-        Write-Verbose "New location ($($this.Location.Hash())"
+        switch($status) {
+            0 {
+                $x = $this.Location.x + $move.x
+                $y = $this.Location.y + $move.y
+                UpdateMap(0, $x, $y)
+            }
+            1 {
+                $this.Location.Add($move)
+                UpdateMap(1, $this.Location.x, $this.Location.y)
+            }
+            2 {
+                $this.Location.Add($move)
+                UpdateMap(2, $this.Location.x, $this.Location.y)
+            }
+        }
+
+        return $status
     }
 }
 
-class Game {
-    [ProgramState] $state
-    [hashtable] $frame
-    [int] $score
-    [int] $blockCount
-    [int] $ballPos
-    [int] $paddlePos
-    [int[]] $BoundX
-    [int[]] $BoundY
+class DroidController {
+    [Droid] $droid
 
-    Game([string[]] $GameCodes) {
-        $this.state = [ProgramState]::New($GameCodes, 0, 0, @(), @(), 0)
-        $this.frame = @{}
-        $this.score = 0
-        $this.blockCount = 1
-        $this.ballPos = 0
-        $this.paddlePos = 0
+    DroidController([string[]] $droidCodes) {
+        $this.droid = [Droid]::New($droidCodes)
     }
 
-    AddInput([int[]] $InBuff) {
-        $this.state.InBuff += $InBuff
-    }
-
-    [int[]] GetOutput() {
-        $output = $this.state.OutBuff
-        $this.state.OutBuff = @()
-        return $output
-    }
-
-    BuildFrame() {
-        $this.frame = @{}
-        $this.BoundX = @(999, -999)
-        $this.BoundY = @(999, -999)
-        $this.blockCount = 0
-        $output = $this.GetOutput()
-        for($i = 0; $i -lt $output.length; $i+=3) {
-            $x = $output[$i]
-            $y = $output[$i+1]
-
-            if($x -eq -1 -and $y -eq 0) {
-                $this.score = $output[$i+2]
-            }
-            else {
-                $tileID = $output[$i+2]
-    
-                $tile = switch ($tileID) {
-                     # empty
-                    0 { " " }
-                     # wall
-                    1 { "X" }
-                     # block
-                    2 {
-                        "#"
-                        $this.blockCount++
-                    }
-                     # horizontal paddle
-                    3 {
-                        "-"
-                        $this.paddlePos = $x
-                    }
-                     # ball
-                    4 {
-                        "o"
-                        $this.ballPos = $x
-                    }
+    WriteMap() {
+        for($y = $this.droid.BoundY[0]; $y -lt $this.droid.BoundY[1]; $y++) {
+            for($x = $this.droid.BoundX[0]; $x -lt $this.droid.BoundX[1]; $x++) {
+                $currLocation = [point]::new($x, $y)
+                if($currLocation.Equals($this.droid.Location)) {
+                    Write-Host "@" -NoNewline
                 }
-    
-                $this.BoundX[0] = [math]::min($this.BoundX[0], $x)
-                $this.BoundX[1] = [math]::max($this.BoundX[1], $x)
-                $this.BoundY[0] = [math]::min($this.BoundY[0], $y)
-                $this.BoundY[1] = [math]::max($this.BoundY[1], $y)
-                $this.frame["$x,$y"] = $tile
-            }
-        }
-    }
-
-    WriteFrame() {
-        for($y = $this.BoundY[0]; $y -lt $this.BoundY[1]; $y++) {
-            for($x = $this.BoundX[0]; $x -lt $this.BoundX[1]; $x++) {
-                if($this.frame.ContainsKey("$x,$y")) {
-                    Write-Host $this.frame["$x,$y"] -NoNewline
+                elseif($this.map.ContainsKey($currLocation.GetHash()) {
+                    Write-Host $this.map[$currLocation.GetHash()].tokenVisual -NoNewline
                 }
                 else {
                     Write-Host " " -NoNewline
@@ -739,28 +660,30 @@ class Game {
             }
             Write-Host
         }
-        Write-Host "Score $($this.score)"
     }
 
-    RunTick() {
-        Run-OpCodes -state $this.state
-        $this.BuildFrame()
-    }
+    StartDroidController() {
+        $userInput = '0'
+        while($userInput -ne 'q') {
+            $userInput = Read-Host "What next (? for help):"
 
-    PlayGame() {
-        $this.state.Set(0, 2)
-        while(($this.blockCount -gt 0) -or ($this.state.exitCode -eq 3)) {
-            $input = 0
-            if($this.ballPos -lt $this.paddlePos) {
-                $input = -1
+            switch($userInput) {
+                'u' { $this.droid.Move(1); break }
+                'd' { $this.droid.Move(2); break }
+                'l' { $this.droid.Move(3); break }
+                'r' { $this.droid.Move(4); break }
+                '?' {
+                    Write-Host "u : up, d : down, l : left, r : right, ? : help, q : quit"
+                    break
+                 }
+                 'q' { return }
+                 default {
+                    Write-Host "invalid input, q for help"
+                    break
+                 }
             }
-            elseif($this.ballPos -gt $this.paddlePos) {
-                $input = 1
-            }
-            $this.state.InBuff = @($input)
-            $this.RunTick()
-            #$this.WriteFrame()
-            Write-Host "Score $($this.score)"
+
+            $this.WriteMap()
         }
     }
 }
