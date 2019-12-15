@@ -579,7 +579,7 @@ class Droid {
     }
 
     UpdateMap([int] $tokenID, [int] $x, [int] $y) {
-        $this.map[$location.GetHash()] = [tile]::new($x, $y, $tokenID)
+        $this.map[$this.location.GetHash()] = [tile]::new($x, $y, $tokenID)
         $this.BoundX[0] = [math]::min($this.BoundX[0], $x)
         $this.BoundX[1] = [math]::max($this.BoundX[1], $x)
         $this.BoundY[0] = [math]::min($this.BoundY[0], $y)
@@ -651,7 +651,7 @@ class DroidController {
                 if($currLocation.Equals($this.droid.Location)) {
                     Write-Host "@" -NoNewline
                 }
-                elseif($this.map.ContainsKey($currLocation.GetHash()) {
+                elseif($this.map.ContainsKey($currLocation.GetHash())) {
                     Write-Host $this.map[$currLocation.GetHash()].tokenVisual -NoNewline
                 }
                 else {
