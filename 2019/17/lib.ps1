@@ -65,7 +65,18 @@ class tile {
     tile([int] $x, [int] $y, $tokenID) {
         $this.location = [point]::new($x, $y)
         $this.tokenID = $tokenID
-        $this.tokenVisual = [char][byte]$tokenID
+        switch($tokenID) {
+            35 {
+                $this.tokenVisual = "o"
+            }
+            46 {
+                $this.tokenVisual = " "
+            }
+            default {
+                $this.tokenVisual = [char][byte]$tokenID
+            }
+
+        }
     }
 }
 
@@ -616,12 +627,12 @@ class AftScaffoldControl {
         $frame = [System.Collections.ArrayList]@()
         
         $line = [System.Collections.ArrayList]@()
-        for($x = $this.BoundX[0]-1; $x -le $this.BoundX[1]+1; $x++) { $line.Add("+") }
+        for($x = $this.BoundX[0]-1; $x -le $this.BoundX[1]+1; $x++) { $line.Add(".") }
         $frame.Add(($line -join ""))
 
         for($y = $this.BoundY[0]; $y -le $this.BoundY[1]; $y++) {
             $line = [System.Collections.ArrayList]@()
-            $line.Add("+")
+            $line.Add(".")
             for($x = $this.BoundX[0]; $x -le $this.BoundX[1]; $x++) {
                 if($this.intersectionPoints.ContainsKey([point]::GetHash($x, $y))) {
                     $line.Add("O")
@@ -633,12 +644,12 @@ class AftScaffoldControl {
                     $line.Add(" ")
                 }
             }
-            $line.Add("+")
+            $line.Add(".")
             $frame.Add(($line -join ""))
         }
         
         $line = [System.Collections.ArrayList]@()
-        for($x = $this.BoundX[0]-1; $x -le $this.BoundX[1]+1; $x++) { $line.Add("+") }
+        for($x = $this.BoundX[0]-1; $x -le $this.BoundX[1]+1; $x++) { $line.Add(".") }
         $frame.Add(($line -join ""))
         
         Clear-Host
@@ -688,5 +699,15 @@ class AftScaffoldControl {
             $alignment += ($p.x * $p.y)
         }
         return $alignment
+    }
+
+    RunMovementRoutine() {
+        # force into wakeup
+
+        # input the routines
+
+        # select to show video feed or not
+
+        # get the output
     }
 }
