@@ -638,20 +638,25 @@ class AftScaffoldControl {
         $frameStr = $frame -join "`n"
     }
 
-    StartAftScaffoldControl() {
+    [int] StartAftScaffoldControl() {
         Run-OpCodes -state $this.Brain
         $output = $this.GetOutput()
         $x = $y = 0
+        $result = 0
         foreach($out in $output) {
             if($out -eq 10) {
                 $y++
                 $x = 0
+            }
+            if($out -gt 255) {
+                $result = $out
             }
             else {
                 $this.UpdateMap($out, $x, $y)
                 $x++
             }
         }
+        return $result
     }
 
     FindIntersectionPoints() {
@@ -680,7 +685,7 @@ class AftScaffoldControl {
         return $alignment
     }
 
-    RunMovementRoutine() {
+    [int] RunMovementRoutine() {
         # force into wakeup
         $this.Brain.codes[0] = 2
 
@@ -702,6 +707,7 @@ class AftScaffoldControl {
         $this.AddInput("n`n".ToCharArray())
 
         # run the thing!
-        $this.StartAftScaffoldControl()
+        $result = $this.StartAftScaffoldControl()
+        return $result
     }
 }

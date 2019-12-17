@@ -8,5 +8,6 @@ param(
 $content = (Get-Content $InFilename).Split(',')
 
 $controller = [AftScaffoldControl]::new($content)
-$output = $controller.RunMovementRoutine()
+$result = $controller.RunMovementRoutine()
 $controller.WriteMap()
+Write-Host "Result : $result"
