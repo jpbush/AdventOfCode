@@ -689,36 +689,36 @@ class DroidController {
 
     WriteMap() {
         $frame = [System.Collections.ArrayList]@()
-        $frame.Add([System.Collections.ArrayList]@())
-        $frameY = 0
-        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { $frame[$frameY].Add("+") }
+        
+        $line = [System.Collections.ArrayList]@()
+        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { $line.Add("+") }
+        $frame.Add(($line -join ""))
+
         for($y = $this.droid.BoundY[0]; $y -le $this.droid.BoundY[1]; $y++) {
-            $frame.Add([System.Collections.ArrayList]@())
-            $frameY++
-            $frame[$frameY].Add("+")
+            $line = [System.Collections.ArrayList]@()
+            $line.Add("+")
             for($x = $this.droid.BoundX[0]; $x -le $this.droid.BoundX[1]; $x++) {
                 $currLocation = [point]::new($x, $y)
-                if(($this.droid.location.x -eq $x) -and ($this.droid.location.y -eq $y)) {
-                    $frame[$frameY].Add("@")
-                }
-                elseif($this.droid.map.ContainsKey($currLocation.GetHash())) {
-                    $frame[$frameY].Add($this.droid.map[$currLocation.GetHash()].tokenVisual)
+                if($this.droid.map.ContainsKey($currLocation.GetHash())) {
+                    $line.Add($this.droid.map[$currLocation.GetHash()].tokenVisual)
                 }
                 else {
-                    $frame[$frameY].Add(" ")
+                    $line.Add(" ")
                 }
             }
-            $frame[$frameY].Add("+")
+            $line.Add("+")
+            $frame.Add(($line -join ""))
         }
         
-        $frame.Add([System.Collections.ArrayList]@())
-        $frameY++
-        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { $frame[$frameY].Add("+") }
+        $line = [System.Collections.ArrayList]@()
+        for($x = $this.droid.BoundX[0]-1; $x -le $this.droid.BoundX[1]+1; $x++) { $line.Add("+") }
+        $frame.Add(($line -join ""))
         
         Clear-Host
         foreach($line in $frame) {
             Write-Host ($line -join "")
         }
+        $frameStr = $frame -join "`n"
     }
 
     [point] BuildMap() {
