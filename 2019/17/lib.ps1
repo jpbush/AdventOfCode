@@ -631,7 +631,7 @@ class AftScaffoldControl {
         for($x = $this.BoundX[0]-1; $x -le $this.BoundX[1]+1; $x++) { $line.Add(".") }
         $frame.Add(($line -join ""))
         
-        Clear-Host
+        # Clear-Host
         foreach($line in $frame) {
             Write-Host ($line -join "")
         }
@@ -682,12 +682,26 @@ class AftScaffoldControl {
 
     RunMovementRoutine() {
         # force into wakeup
-        $this.
+        $this.Brain.codes[0] = 2
 
         # input the routines
+        # A: L10 R10 L10 L10
+        # B: R10 R12 L12
+        # C: R12 L12 R6
+        # Main: A B A B C C B A B C
+        $Main = "A,B,A,B,C,C,B,A,B,C`n"
+        $A = "L,10,R,10,L,10,L,10`n"
+        $B = "R,10,R,12,L,12`n"
+        $C = "R,12,L,12,R,6`n"
+        $this.AddInput($Main.ToCharArray())
+        $this.AddInput($A.ToCharArray())
+        $this.AddInput($B.ToCharArray())
+        $this.AddInput($C.ToCharArray())
 
         # select to show video feed or not
+        $this.AddInput("n`n".ToCharArray())
 
-        # get the output
+        # run the thing!
+        $this.StartAftScaffoldControl()
     }
 }
