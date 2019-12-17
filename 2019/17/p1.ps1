@@ -7,9 +7,9 @@ param(
 
 $content = (Get-Content $InFilename).Split(',')
 
-$controller = [DroidController]::new($content)
-# $controller.StartDroidController()
-$result = $controller.BuildMap()
-Write-Host "Took $result moves to find the end"
-$depth = $controller.BFS([point]::new(0,0))
-Write-Host "depth $depth"
+$controller = [AftScaffoldControl]::new($content)
+$controller.StartAftScaffoldControl()
+$controller.FindIntersectionPoints()
+$controller.WriteMap()
+$alignment = $controller.CalculateAlignmentParams()
+Write-Host "Alignment parameter sum: $alignment"

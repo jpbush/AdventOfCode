@@ -35,10 +35,20 @@ class point {
     [bool] Equals([int] $x, [int] $y) {
         return ($this.x -eq $x) -and ($this.y -eq $y)
     }
+    
+    [string] static GetHash([point] $p) 
+    {
+        return [point]::GetHash($p.x, $p.y)
+    }
+    
+    [string] static GetHash([int] $x, [int] $y) 
+    {
+        return "$x,$y"
+    }
 
     [string] GetHash() 
     {
-        return "$($this.x),$($this.y)"
+        return [point]::GetHash($this.x, $this.y)
     }
 
     [string] ToString() 
@@ -564,22 +574,38 @@ class Robot {
 }
 
 class AftScaffoldControl {
-    [ProgramState] $ASCIIProg
+    [ProgramState] $Brain
     [hashtable] $map
+    [hashtable] $scaffoldMap
+    [hashtable] $intersectionPoints
     [int[]] $BoundX
     [int[]] $BoundY
     [Robot] $robot
 
-    AftScaffoldControl([string[]] $ASCIIProg) {
-        $this.ASCIIProg = [Robot]::New($ASCIIProg)
+    AftScaffoldControl([string[]] $BrainCodes) {
+        $this.Brain = [ProgramState]::New($BrainCodes, 0, 0, @(), @(), 0)
         $this.map = @{}
+        $this.scaffoldMap = @{}
+        $this.intersectionPoints = @{}
         $this.BoundX = @(0, 0)
         $this.BoundY = @(0, 0)
     }
 
+    AddInput([long[]] $InBuff) {
+        $this.Brain.InBuff += $InBuff
+    }
+
+    [long[]] GetOutput() {
+        $output = $this.Brain.OutBuff
+        $this.Brain.OutBuff = @()
+        return $output
+    }
+
     UpdateMap([int] $tokenID, [int] $x, [int] $y) {
-        $updateLoc = [point]::new($x, $y)
-        $this.map[$updateLoc.GetHash()] = [tile]::new($x, $y, $tokenID)
+        $this.map[[point]::GetHash($x, $y)] = [tile]::new($x, $y, $tokenID)
+        if($tokenID -eq 35) {
+            $this.scaffoldMap[[point]::GetHash($x, $y)] = [tile]::new($x, $y, $tokenID)
+        }
         $this.BoundX[0] = [math]::min($this.BoundX[0], $x)
         $this.BoundX[1] = [math]::max($this.BoundX[1], $x)
         $this.BoundY[0] = [math]::min($this.BoundY[0], $y)
@@ -597,9 +623,11 @@ class AftScaffoldControl {
             $line = [System.Collections.ArrayList]@()
             $line.Add("+")
             for($x = $this.BoundX[0]; $x -le $this.BoundX[1]; $x++) {
-                $currLocation = [point]::new($x, $y)
-                if($this.map.ContainsKey($currLocation.GetHash())) {
-                    $line.Add($this.map[$currLocation.GetHash()].tokenVisual)
+                if($this.intersectionPoints.ContainsKey([point]::GetHash($x, $y))) {
+                    $line.Add("O")
+                }
+                elseif($this.map.ContainsKey([point]::GetHash($x, $y))) {
+                    $line.Add($this.map[[point]::GetHash($x, $y)].tokenVisual)
                 }
                 else {
                     $line.Add(" ")
@@ -620,247 +648,45 @@ class AftScaffoldControl {
         $frameStr = $frame -join "`n"
     }
 
-    [point] BuildMap() {
-        $stack = [System.Collections.Stack]::new()
-        $foundGoal = $false
-        $direction = 1
-        $ittr = 0
-        $this.goalPoint = $null
-        do {
-            $ittr++
-            $status = $this.Robot.Move($direction)
-            $stack.Push($direction)
-            Start-Sleep -Milliseconds $Global:sleepTime
-            if(!($stack.Count % 100)) { $this.WriteMap() }
-            # $this.WriteMap()
-            Write-Verbose "Depth $($stack.Count)"
-            switch($status) {
-                0 {
-                    Write-Verbose "Wall"
-                    $direction = $stack.Pop()
-                    $directionCopy = $direction
-                    $foundClearPath = $false
-                    for($i = 0; $i -lt 4; $i++) {
-                        $direction = [math]::max(($direction + 1) % 5, 1)
-                        $move = [point]::new(0,0)
-                        switch ($direction) {
-                            1 { $move.y = -1; break }
-                            2 { $move.y = 1; break }
-                            3 { $move.x = -1; break }
-                            4 { $move.x = 1; break }
-                            default { throw "invalid direction $_"; break  }
-                        }
-                        $move.Add($this.Robot.Location)
-                        if(!$this.map.ContainsKey($move.GetHash())) {
-                            Write-Verbose "send it"
-                            $foundClearPath = $true
-                            break
-                        }
-                        else {
-                            Write-Verbose "already been there"
-                        }
-                    }
-
-                    if(!$foundClearPath) {
-                        Write-Verbose "Didn't stuck in a corner, backing up"
-                        $direction = $stack.Pop()
-                        switch($direction) {
-                            1 { $this.Robot.Move(2, $true); break }
-                            2 { $this.Robot.Move(1, $true); break }
-                            3 { $this.Robot.Move(4, $true); break }
-                            4 { $this.Robot.Move(3, $true); break }
-                        }
-                        $direction = [math]::max(($direction + 1) % 5, 1)
-                    }
-
-                    Write-Verbose "Try $direction next"
-                    break
-            }
-            1 {
-                    Write-Verbose "Not Wall"
-                # up
-                $nextLoc = [point]::new($this.Robot.Location.x, ($this.Robot.Location.y - 1))
-                Write-Verbose "Try up : $($nextLoc.ToString())"
-                if(!$this.map.ContainsKey($nextLoc.GetHash())) {
-                    Write-Verbose "send it"
-                        $direction = 1
-                        break
-                    }
-                else {
-                    Write-Verbose "already been there"
-                }
-                # down
-                $nextLoc = [point]::new($this.Robot.Location.x, ($this.Robot.Location.y + 1))
-                Write-Verbose "Try down : $($nextLoc.ToString())"
-                if(!$this.map.ContainsKey($nextLoc.GetHash())) {
-                    Write-Verbose "send it"
-                        $direction = 2
-                        break
-                    }
-                else {
-                    Write-Verbose "already been there"
-                }
-                # left
-                $nextLoc = [point]::new(($this.Robot.Location.x - 1), $this.Robot.Location.y)
-                Write-Verbose "Try left : $($nextLoc.ToString())"
-                if(!$this.map.ContainsKey($nextLoc.GetHash())) {
-                    Write-Verbose "send it"
-                        $direction = 3
-                        break
-                }
-                else {
-                    Write-Verbose "already been there"
-                }
-                # right
-                $nextLoc = [point]::new(($this.Robot.Location.x + 1), $this.Robot.Location.y)
-                Write-Verbose "Try right : $($nextLoc.ToString())"
-                if(!$this.map.ContainsKey($nextLoc.GetHash())) {
-                    Write-Verbose "send it"
-                        $direction = 4
-                        break
-                }
-                else {
-                    Write-Verbose "already been there"
-                }
-                Write-Verbose "Didn't find it, backing up"
-                # throw "Didn't find it, backing up"
-                # backup
-                    $direction = $stack.Pop()
-                switch($direction) {
-                        1 { $this.Robot.Move(2, $true); break }
-                        2 { $this.Robot.Move(1, $true); break }
-                        3 { $this.Robot.Move(4, $true); break }
-                        4 { $this.Robot.Move(3, $true); break }
-                    }
-                    $direction = [math]::max(($direction + 1) % 5, 1)
-                    break
-                }
-                2 {
-                    Write-Host "Found Target at $($this.Robot.Location.GetHash())"
-                    $foundGoal = $true
-                    $this.goalPoint = [point]::new($this.Robot.Location)
-                    break
-                }
-                default { throw "invalid status $status" }
-            }
-        } while($stack.Count -gt 0 -or $ittr -lt 2)
-
-        $stack2 = [System.Collections.Stack]::new($stack)
-        While($stack2.Count) {
-            $this.map[$this.Robot.Location.GetHash()] = [tile]::new($this.location.x, $this.location.y, 3)
-            $direction = $stack2.Pop()
-            switch($direction) {
-                    1 { $this.Robot.Move(2); break }
-                    2 { $this.Robot.Move(1); break }
-                    3 { $this.Robot.Move(4); break }
-                    4 { $this.Robot.Move(3); break }
-                }
-            Write-Verbose "Depth $($stack2.Count)"
-            $this.WriteMap()
-        }
-
-        return $this.goalPoint
-    }
-
-    [int] BFS([point] $startPos) {
-        $q = [System.Collections.Queue]::new()
-        $q.Enqueue(@{pos = $startPos; depth = 0})
-        $seen = @{}
-        $seen[$startPos.GetHash()] = $true
-        $maxDepth = 0
-        while($q.Count) {
-            $item = $q.Dequeue()
-            $maxDepth = [math]::max($item.depth, $maxDepth)
-            $seen[$item.pos.GetHash()] = $true
-            $tokenID = $this.map[$item.pos.GetHash()].tokenID
-            if(!($item.depth % 10)) { $this.WriteMap() }
-            # $this.WriteMap()
-            switch($tokenID) {
-                0 { break }
-                1 {
-                    $this.map[$item.pos.GetHash()].tokenVisual = "X"
-                    # add children
-                    $next = [point]::new($item.pos.x, $item.pos.y - 1)
-                    if(!$seen[$next.GetHash()] -and $this.map.ContainsKey($next.GetHash()) -and ($this.map[$next.GetHash()].tokenID -ne 0)) {
-                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
-                    }
-                    $next = [point]::new($item.pos.x, $item.pos.y + 1)
-                    if(!$seen[$next.GetHash()] -and $this.map.ContainsKey($next.GetHash()) -and ($this.map[$next.GetHash()].tokenID -ne 0)) {
-                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
-                    }
-                    $next = [point]::new($item.pos.x - 1, $item.pos.y)
-                    if(!$seen[$next.GetHash()] -and $this.map.ContainsKey($next.GetHash()) -and ($this.map[$next.GetHash()].tokenID -ne 0)) {
-                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
-                    }
-                    $next = [point]::new($item.pos.x + 1, $item.pos.y)
-                    if(!$seen[$next.GetHash()] -and $this.map.ContainsKey($next.GetHash()) -and ($this.map[$next.GetHash()].tokenID -ne 0)) {
-                        $q.Enqueue(@{pos = $next; depth = $item.depth + 1})
-                    }
-                    break
-                }
-                2 {
-                    return $item.depth
-                }
-            }
-        }
-        return $maxDepth
-    }
-
-    [int] StartRobotAuto() {
-        $result = $this.BuildMap()
-        $result = $this.BFS([point]::new(0,0))
-        return $result
-    }
-
-    [int] CalculateOxygenFillTime() {
-        $this.goalPoint = $this.BuildMap()
-        $this.map[$this.goalPoint.GetHash()] = [tile]::new($this.goalPoint.x, $this.goalPoint.y, 1)
-        $result = $this.BFS($this.goalPoint)
-        return $result
-    }
-
     StartAftScaffoldControl() {
-        $userInput = '0'
-        while($userInput -ne 'q') {
-            $userInput = Read-Host "What next (? for help)"
-            for($i = 0; $i -lt $userInput.Length; $i++) {
-                $input = $userInput[$i]
-                switch($input) {
-                    'w' {
-                        $this.Robot.Move(1)
-                        $this.Robot.LookEW()
-                        break
-                    }
-                    's' {
-                        $this.Robot.Move(2)
-                        $this.Robot.LookEW()
-                        break
-                    }
-                    'a' {
-                        $this.Robot.Move(3)
-                        $this.Robot.LookNS()
-                        break
-                    }
-                    'd' {
-                        $this.Robot.Move(4)
-                        $this.Robot.LookNS()
-                        break
-                    }
-                    'e' { $this.Robot.Look(); break }
-                    'p' { break }
-                    '?' {
-                        Write-Host "w : up, s : down, a : left, d : right, e : look around, p : print map, ? : help, q : quit"
-                        break
-                     }
-                     'q' { return }
-                     default {
-                        Write-Host "invalid input, q for help"
-                        break
-                     }
-                }
+        Run-OpCodes -state $this.Brain
+        $output = $this.GetOutput()
+        $x = $y = 0
+        foreach($out in $output) {
+            if($out -eq 10) {
+                $y++
+                $x = 0
             }
-            Clear-Host
-            $this.WriteMap()
+            else {
+                $this.UpdateMap($out, $x, $y)
+                $x++
+            }
         }
+    }
+
+    FindIntersectionPoints() {
+        foreach($key in $this.scaffoldMap.Keys) {
+            $currToken = $this.scaffoldMap[$key]
+            $x = $currToken.Location.x
+            $y = $currToken.Location.y
+            if(
+                $this.scaffoldMap.ContainsKey([point]::GetHash($x, $y - 1)) -and
+                $this.scaffoldMap.ContainsKey([point]::GetHash($x, $y + 1)) -and
+                $this.scaffoldMap.ContainsKey([point]::GetHash($x - 1, $y)) -and
+                $this.scaffoldMap.ContainsKey([point]::GetHash($x + 1, $y))
+            ) {
+                $p = [point]::new($x, $y)
+                $this.intersectionPoints[$p.GetHash()] = $p
+            }
+        }
+    }
+
+    [int] CalculateAlignmentParams() {
+        $alignment = 0
+        foreach($key in $this.intersectionPoints.Keys) {
+            $p = $this.intersectionPoints[$key]
+            $alignment += ($p.x * $p.y)
+        }
+        return $alignment
     }
 }
