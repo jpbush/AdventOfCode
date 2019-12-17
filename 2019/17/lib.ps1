@@ -564,26 +564,6 @@ function Run-OpCodes
     return $state
 }
 
-class Robot {
-    [ProgramState] $Brain
-    [point] $Location
-
-    Robot([string[]] $BrainCodes) {
-        $this.Brain = [ProgramState]::New($BrainCodes, 0, 0, @(), @(), 0)
-        $this.Location = [point]::New(0,0)
-    }
-
-    AddInput([long[]] $InBuff) {
-        $this.Brain.InBuff += $InBuff
-    }
-
-    [long[]] GetOutput() {
-        $output = $this.Brain.OutBuff
-        $this.Brain.OutBuff = @()
-        return $output
-    }
-}
-
 class AftScaffoldControl {
     [ProgramState] $Brain
     [hashtable] $map
@@ -591,7 +571,6 @@ class AftScaffoldControl {
     [hashtable] $intersectionPoints
     [int[]] $BoundX
     [int[]] $BoundY
-    [Robot] $robot
 
     AftScaffoldControl([string[]] $BrainCodes) {
         $this.Brain = [ProgramState]::New($BrainCodes, 0, 0, @(), @(), 0)
@@ -703,6 +682,7 @@ class AftScaffoldControl {
 
     RunMovementRoutine() {
         # force into wakeup
+        $this.
 
         # input the routines
 
