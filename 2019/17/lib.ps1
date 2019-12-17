@@ -55,18 +55,7 @@ class tile {
     tile([int] $x, [int] $y, $tokenID) {
         $this.location = [point]::new($x, $y)
         $this.tokenID = $tokenID
-        $this.tokenVisual = switch($tokenID) {
-            0 { "#"; break }
-            1 { "."; break }
-            2 { "*"; break }
-            3 { "O"; break }
-            10 { "^"; break }
-            11 { "v"; break }
-            12 { "<"; break }
-            13 { ">"; break }
-            20{ "X"; break }
-            default { throw "Invalid tokenID: $tokenID"; break }
-        }
+        $this.tokenVisual = [char][byte]$tokenID
     }
 }
 
